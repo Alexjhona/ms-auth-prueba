@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthUserController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">auth-service</a> &gt; <a href="index.source.html" class="el_package">com.example.ms_auth.controller</a> &gt; <span class="el_source">AuthUserController.java</span></div><h1>AuthUserController.java</h1><pre class="source lang-java linenums">package com.example.ms_auth.controller;
+
+import com.example.ms_auth.dto.AuthUserDto;
+import com.example.ms_auth.dto.AuthUserResponseDto;
+import com.example.ms_auth.entity.AuthUser;
+import com.example.ms_auth.entity.TokenDto;
+import com.example.ms_auth.service.AuthUserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@CrossOrigin(origins = &quot;http://localhost:4200&quot;)
+@RestController
+@RequestMapping(&quot;/auth&quot;)
+<span class="fc" id="L15">public class AuthUserController {</span>
+
+    @Autowired
+    AuthUserService authUserService;
+
+    @PostMapping(&quot;/login&quot;)
+    public ResponseEntity&lt;TokenDto&gt; login(@RequestBody AuthUserDto authUserDto) {
+<span class="fc" id="L22">        TokenDto tokenDto = authUserService.login(authUserDto);</span>
+<span class="fc bfc" id="L23" title="All 2 branches covered.">        if (tokenDto == null) {</span>
+<span class="fc" id="L24">            return ResponseEntity.badRequest().build();</span>
+        }
+<span class="fc" id="L26">        return ResponseEntity.ok(tokenDto);</span>
+    }
+
+    @PostMapping(&quot;/validate&quot;)
+    public ResponseEntity&lt;TokenDto&gt; validate(@RequestParam String token) {
+<span class="fc" id="L31">        TokenDto tokenDto = authUserService.validate(token);</span>
+<span class="fc bfc" id="L32" title="All 2 branches covered.">        if (tokenDto == null) {</span>
+<span class="fc" id="L33">            return ResponseEntity.badRequest().build();</span>
+        }
+<span class="fc" id="L35">        return ResponseEntity.ok(tokenDto);</span>
+    }
+
+    @PostMapping(&quot;/create&quot;)
+    public ResponseEntity&lt;AuthUserResponseDto&gt; create(@RequestBody AuthUserDto authUserDto) {
+<span class="fc" id="L40">        AuthUser authUser = authUserService.save(authUserDto);</span>
+<span class="fc bfc" id="L41" title="All 2 branches covered.">        if (authUser == null) {</span>
+<span class="fc" id="L42">            return ResponseEntity.badRequest().build();</span>
+        }
+
+<span class="fc" id="L45">        AuthUserResponseDto response = new AuthUserResponseDto(</span>
+<span class="fc" id="L46">                authUser.getId(),</span>
+<span class="fc" id="L47">                authUser.getUserName()</span>
+        );
+
+<span class="fc" id="L50">        return ResponseEntity.ok(response);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
