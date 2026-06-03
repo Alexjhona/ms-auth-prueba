@@ -4,6 +4,7 @@ import com.example.ms_auth.dto.AuthUserDto;
 import com.example.ms_auth.dto.AuthUserResponseDto;
 import com.example.ms_auth.entity.AuthUser;
 import com.example.ms_auth.entity.TokenDto;
+import com.example.ms_auth.exception.GlobalExceptionHandler;
 import com.example.ms_auth.service.AuthUserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,10 +17,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -38,7 +39,13 @@ class AuthUserControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(authUserController).build();
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
+
+        mockMvc = MockMvcBuilders.standaloneSetup(authUserController)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .setValidator(validator)
+                .build();
     }
 
     @Test
@@ -78,6 +85,44 @@ class AuthUserControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(authUserService).login(any(AuthUserDto.class));
+    }
+
+    @Test
+    @DisplayName("POST /auth/login - retorna Bad Request si usuario esta vacio")
+    void login_UsuarioVacio_RetornaBadRequestConValidacion() throws Exception {
+        AuthUserDto request = AuthUserDto.builder()
+                .userName("   ")
+                .password("123456")
+                .build();
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Validación fallida"))
+                .andExpect(jsonPath("$.mensajes.userName").value("Campo obligatorio"));
+
+        verifyNoInteractions(authUserService);
+    }
+
+    @Test
+    @DisplayName("POST /auth/login - retorna Bad Request si password es punto")
+    void login_PasswordPunto_RetornaBadRequestConValidacion() throws Exception {
+        AuthUserDto request = AuthUserDto.builder()
+                .userName("admin")
+                .password(".")
+                .build();
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Validación fallida"))
+                .andExpect(jsonPath("$.mensajes.password").value("Valor inválido"));
+
+        verifyNoInteractions(authUserService);
     }
 
     @Test
@@ -149,5 +194,24 @@ class AuthUserControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(authUserService).save(any(AuthUserDto.class));
+    }
+
+    @Test
+    @DisplayName("POST /auth/create - retorna Bad Request si password es null")
+    void create_PasswordNull_RetornaBadRequestConValidacion() throws Exception {
+        AuthUserDto request = AuthUserDto.builder()
+                .userName("admin")
+                .password(null)
+                .build();
+
+        mockMvc.perform(post("/auth/create")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Validación fallida"))
+                .andExpect(jsonPath("$.mensajes.password").value("Campo obligatorio"));
+
+        verifyNoInteractions(authUserService);
     }
 }

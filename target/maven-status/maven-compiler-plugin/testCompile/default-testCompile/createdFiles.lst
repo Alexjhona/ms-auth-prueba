@@ -1,5 +1,0 @@
-com\example\ms_auth\controller\AuthUserControllerTest.class
-com\example\ms_auth\MsAuthApplicationTests.class
-com\example\ms_auth\AuthModelsTest.class
-com\example\ms_auth\security\JwtProviderTest.class
-com\example\ms_auth\service\impl\AuthUserServiceImplTest.class
