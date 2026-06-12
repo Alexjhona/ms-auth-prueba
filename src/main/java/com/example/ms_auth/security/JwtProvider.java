@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.util.Base64;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 
 @Component
@@ -27,8 +26,7 @@ public class JwtProvider {
     }
 
     public String createToken(AuthUser authUser) {
-        Map<String, Object> claims = new HashMap<>();
-        claims = Jwts.claims().setSubject(authUser.getUserName());
+        Map<String, Object> claims = Jwts.claims().setSubject(authUser.getUserName());
         claims.put("id", authUser.getId());
 
         Date now = new Date();

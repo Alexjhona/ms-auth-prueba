@@ -1,7 +1,6 @@
 package com.example.ms_auth.controller;
 
 import com.example.ms_auth.dto.AuthUserDto;
-import com.example.ms_auth.dto.AuthUserResponseDto;
 import com.example.ms_auth.entity.AuthUser;
 import com.example.ms_auth.entity.TokenDto;
 import com.example.ms_auth.exception.GlobalExceptionHandler;

@@ -7,7 +7,6 @@ import com.example.ms_auth.entity.TokenDto;
 import com.example.ms_auth.repository.AuthUserRepository;
 import com.example.ms_auth.security.JwtProvider;
 import com.example.ms_auth.service.AuthUserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -21,13 +20,18 @@ import java.util.Optional;
 
 @Service
 public class AuthUserServiceImpl implements AuthUserService {
-    @Autowired
-    AuthUserRepository authUserRepository;
-    @Autowired
-    PasswordEncoder passwordEncoder;
-    @Autowired
-    JwtProvider jwtProvider;
+    private final AuthUserRepository authUserRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtProvider jwtProvider;
 
+    public AuthUserServiceImpl(
+            AuthUserRepository authUserRepository,
+            PasswordEncoder passwordEncoder,
+            JwtProvider jwtProvider) {
+        this.authUserRepository = authUserRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtProvider = jwtProvider;
+    }
 
     @Override
     public AuthUser save(AuthUserDto authUserDto) {
