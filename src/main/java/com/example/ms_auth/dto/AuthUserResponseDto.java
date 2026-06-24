@@ -10,4 +10,16 @@ import lombok.NoArgsConstructor;
 public class AuthUserResponseDto {
     private int id;
     private String userName;
+    private String nombre;
+    private String apellido;
+    private String dni;
+    private String celular;
+    private String correo;
+    private String rol;
+    private Boolean activo;
+
+    public AuthUserResponseDto(int id, String userName) {
+        this.id = id;
+        this.userName = userName;
+    }
 }

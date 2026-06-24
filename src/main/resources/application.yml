@@ -5,3 +5,15 @@ spring:
     active: development
   config:
     import: optional:configserver:http://root:123456@localhost:7071
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:guerrycastillo9@gmail.com}
+    password: ${MAIL_PASSWORD:ochuciwyjjepdqxw}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+

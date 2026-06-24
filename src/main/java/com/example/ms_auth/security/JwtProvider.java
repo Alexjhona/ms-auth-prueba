@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.util.Base64;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 
 @Component
@@ -26,8 +27,13 @@ public class JwtProvider {
     }
 
     public String createToken(AuthUser authUser) {
-        Map<String, Object> claims = Jwts.claims().setSubject(authUser.getUserName());
+        Map<String, Object> claims = new HashMap<>();
+        claims = Jwts.claims().setSubject(authUser.getUserName());
+        String rol = authUser.getRol();
         claims.put("id", authUser.getId());
+        claims.put("rol", rol == null || rol.trim().isEmpty() ? "ADMIN" : rol.trim().toUpperCase());
+        claims.put("nombre", authUser.getNombre());
+        claims.put("apellido", authUser.getApellido());
 
         Date now = new Date();
         Date exp = new Date(now.getTime() + expiration);
@@ -54,6 +60,16 @@ public class JwtProvider {
             return Jwts.parser().setSigningKey(secret).parseClaimsJws(token).getBody().getSubject();
         } catch (Exception e) {
             return "bad token";
+        }
+    }
+
+    public String getRolFromToken(String token) {
+        try {
+            Object rol = Jwts.parser().setSigningKey(secret).parseClaimsJws(token).getBody().get("rol");
+            String rolTexto = rol == null ? "" : rol.toString().trim();
+            return rolTexto.isEmpty() ? "ADMIN" : rolTexto.toUpperCase();
+        } catch (Exception e) {
+            return "";
         }
     }
 }

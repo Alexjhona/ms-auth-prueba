@@ -22,6 +22,7 @@
 		<java.version>17</java.version>
 		<spring-cloud.version>2020.0.6</spring-cloud.version>
 		<lombok.version>1.18.30</lombok.version>
+		<testcontainers.version>1.21.4</testcontainers.version>
 	</properties>
 
 	<dependencies>
@@ -102,6 +103,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Email / SMTP -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+
 		<!-- Validation (javax.validation para Spring Boot 2.x) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -130,6 +137,20 @@
 			<scope>test</scope>
 		</dependency>
 
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>${testcontainers.version}</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>mysql</artifactId>
+			<version>${testcontainers.version}</version>
+			<scope>test</scope>
+		</dependency>
+
 	</dependencies>
 
 	<dependencyManagement>
@@ -152,6 +173,16 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>0.8.12</version>
+				<configuration>
+					<excludes>
+						<exclude>com/example/ms_auth/MsAuthApplication.class</exclude>
+						<exclude>com/example/ms_auth/config/*</exclude>
+						<exclude>com/example/ms_auth/dto/*</exclude>
+						<exclude>com/example/ms_auth/entity/*</exclude>
+						<exclude>com/example/ms_auth/service/impl/ConsultaDniServiceImpl.class</exclude>
+						<exclude>com/example/ms_auth/service/impl/EmailServiceImpl.class</exclude>
+					</excludes>
+				</configuration>
 				<executions>
 					<execution>
 						<goals>
@@ -165,6 +196,28 @@
 						<goals>
 							<goal>report</goal>
 						</goals>
+					</execution>
+
+					<execution>
+						<id>check</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>0.80</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
 					</execution>
 				</executions>
 			</plugin>
