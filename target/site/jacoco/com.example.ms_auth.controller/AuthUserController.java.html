@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthUserController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">auth-service</a> &gt; <a href="index.source.html" class="el_package">com.example.ms_auth.controller</a> &gt; <span class="el_source">AuthUserController.java</span></div><h1>AuthUserController.java</h1><pre class="source lang-java linenums">package com.example.ms_auth.controller;
+
+import com.example.ms_auth.dto.AuthUserDto;
+import com.example.ms_auth.dto.AuthUserResponseDto;
+import com.example.ms_auth.dto.ActivarTrabajadorRequest;
+import com.example.ms_auth.dto.DniConsultaResponseDto;
+import com.example.ms_auth.dto.EnviarInvitacionRequest;
+import com.example.ms_auth.entity.AuthUser;
+import com.example.ms_auth.entity.TokenDto;
+import com.example.ms_auth.service.ConsultaDniService;
+import com.example.ms_auth.service.EmailService;
+import com.example.ms_auth.service.AuthUserService;
+import com.example.ms_auth.security.JwtProvider;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import javax.validation.Valid;
+import java.util.Map;
+
+@RestController
+@RequestMapping(&quot;/auth&quot;)
+@Tag(name = &quot;Autenticacion&quot;, description = &quot;Endpoints para iniciar sesion, crear usuarios y validar tokens JWT.&quot;)
+<span class="fc" id="L29">public class AuthUserController {</span>
+
+    @Autowired
+    AuthUserService authUserService;
+
+    @Autowired
+    JwtProvider jwtProvider;
+
+    @Autowired
+    ConsultaDniService consultaDniService;
+
+    @Autowired
+    EmailService emailService;
+
+    @PostMapping(&quot;/login&quot;)
+    @Operation(summary = &quot;Iniciar sesion&quot;, description = &quot;Autentica las credenciales de un usuario y devuelve un token JWT temporal para consumir rutas protegidas del sistema. El body debe incluir userName y password.&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Login correcto, devuelve token JWT&quot;),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Credenciales invalidas&quot;)
+    })
+    public ResponseEntity&lt;TokenDto&gt; login(@Valid @RequestBody AuthUserDto authUserDto) {
+<span class="fc" id="L50">        TokenDto tokenDto = authUserService.login(authUserDto);</span>
+<span class="fc bfc" id="L51" title="All 2 branches covered.">        if (tokenDto == null) {</span>
+<span class="fc" id="L52">            throw new IllegalArgumentException(&quot;Credenciales inválidas&quot;);</span>
+        }
+<span class="fc" id="L54">        return ResponseEntity.ok(tokenDto);</span>
+    }
+
+    @PostMapping(&quot;/validate&quot;)
+    @Operation(summary = &quot;Validar token JWT&quot;, description = &quot;Verifica si un token JWT enviado por el cliente es valido para autorizar solicitudes protegidas. Este endpoint es consumido por el API Gateway para proteger rutas /api/**.&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Token valido&quot;),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Token invalido o expirado&quot;)
+    })
+    public ResponseEntity&lt;TokenDto&gt; validate(@Parameter(description = &quot;Token JWT temporal que se validara para autorizar solicitudes protegidas. No compartir ni registrar tokens reales.&quot;, example = &quot;JWT_TEMPORAL&quot;) @RequestParam String token) {
+<span class="fc" id="L64">        TokenDto tokenDto = authUserService.validate(token);</span>
+<span class="fc bfc" id="L65" title="All 2 branches covered.">        if (tokenDto == null) {</span>
+<span class="fc" id="L66">            throw new IllegalArgumentException(&quot;Token inválido&quot;);</span>
+        }
+<span class="fc" id="L68">        return ResponseEntity.ok(tokenDto);</span>
+    }
+
+    @PostMapping(&quot;/create&quot;)
+    @Operation(summary = &quot;Crear usuario&quot;, description = &quot;Registra un nuevo usuario del sistema con sus credenciales de acceso. Usar credenciales de prueba en ambientes de validacion y no registrar datos sensibles en documentacion.&quot;)
+    @ApiResponses({
+            @ApiResponse(responseCode = &quot;200&quot;, description = &quot;Usuario creado correctamente&quot;),
+            @ApiResponse(responseCode = &quot;400&quot;, description = &quot;Datos de usuario invalidos&quot;)
+    })
+    public ResponseEntity&lt;AuthUserResponseDto&gt; create(@Valid @RequestBody AuthUserDto authUserDto) {
+<span class="fc" id="L78">        authUserDto.setRol(&quot;VENDEDOR&quot;);</span>
+<span class="fc" id="L79">        authUserDto.setActivo(true);</span>
+<span class="fc" id="L80">        AuthUser authUser = authUserService.save(authUserDto);</span>
+
+<span class="fc" id="L82">        AuthUserResponseDto response = toResponse(authUser);</span>
+
+<span class="fc" id="L84">        return ResponseEntity.ok(response);</span>
+    }
+
+    @GetMapping(&quot;/dni/{dni}&quot;)
+    public ResponseEntity&lt;?&gt; consultarDni(@PathVariable String dni) {
+<span class="fc" id="L89">        DniConsultaResponseDto response = consultaDniService.consultar(dni);</span>
+<span class="fc" id="L90">        return ResponseEntity.ok(response);</span>
+    }
+
+    @GetMapping(&quot;/trabajadores&quot;)
+    public ResponseEntity&lt;?&gt; listarTrabajadores(@RequestHeader(value = &quot;Authorization&quot;, required = false) String authorization) {
+<span class="fc bfc" id="L95" title="All 2 branches covered.">        if (!esAdmin(authorization)) {</span>
+<span class="fc" id="L96">            return ResponseEntity.status(403).build();</span>
+        }
+<span class="fc" id="L98">        return ResponseEntity.ok(authUserService.listar().stream().map(this::toResponse).toList());</span>
+    }
+
+    @PostMapping(&quot;/trabajadores&quot;)
+    public ResponseEntity&lt;?&gt; crearTrabajador(@RequestHeader(value = &quot;Authorization&quot;, required = false) String authorization,
+                                             @Valid @RequestBody AuthUserDto authUserDto) {
+<span class="fc bfc" id="L104" title="All 2 branches covered.">        if (!esAdmin(authorization)) {</span>
+<span class="fc" id="L105">            return ResponseEntity.status(403).build();</span>
+        }
+
+<span class="fc" id="L108">        AuthUser authUser = authUserService.save(authUserDto);</span>
+<span class="fc" id="L109">        return ResponseEntity.ok(toResponse(authUser));</span>
+    }
+
+    @PostMapping(&quot;/trabajadores/activar&quot;)
+    public ResponseEntity&lt;?&gt; activarTrabajador(@Valid @RequestBody ActivarTrabajadorRequest request) {
+<span class="fc" id="L114">        AuthUser authUser = authUserService.activarTrabajador(request.getCorreo(), request.getUserName(), request.getPassword());</span>
+<span class="fc" id="L115">        return ResponseEntity.ok(toResponse(authUser));</span>
+    }
+
+    @PostMapping(&quot;/trabajadores/enviar-invitacion&quot;)
+    public ResponseEntity&lt;?&gt; enviarInvitacionTrabajador(@RequestHeader(value = &quot;Authorization&quot;, required = false) String authorization,
+                                                        @Valid @RequestBody EnviarInvitacionRequest request) {
+<span class="pc bpc" id="L121" title="1 of 2 branches missed.">        if (!esAdmin(authorization)) {</span>
+<span class="nc" id="L122">            return ResponseEntity.status(403).build();</span>
+        }
+
+<span class="fc" id="L125">        emailService.enviarInvitacionTrabajador(request);</span>
+<span class="fc" id="L126">        return ResponseEntity.ok(Map.of(&quot;mensaje&quot;, &quot;Invitacion enviada correctamente&quot;));</span>
+    }
+
+    @PostMapping(&quot;/trabajadores/{id}/impersonar&quot;)
+    public ResponseEntity&lt;?&gt; impersonarTrabajador(@RequestHeader(value = &quot;Authorization&quot;, required = false) String authorization,
+                                                  @PathVariable Integer id) {
+<span class="pc bpc" id="L132" title="1 of 2 branches missed.">        if (!esAdmin(authorization)) {</span>
+<span class="nc" id="L133">            return ResponseEntity.status(403).build();</span>
+        }
+
+<span class="fc" id="L136">        TokenDto tokenDto = authUserService.impersonarTrabajador(id);</span>
+<span class="fc" id="L137">        return ResponseEntity.ok(tokenDto);</span>
+    }
+
+    @PutMapping(&quot;/trabajadores/{id}&quot;)
+    public ResponseEntity&lt;?&gt; actualizarTrabajador(@RequestHeader(value = &quot;Authorization&quot;, required = false) String authorization,
+                                                  @PathVariable Integer id,
+                                                  @Valid @RequestBody AuthUserDto authUserDto) {
+<span class="pc bpc" id="L144" title="1 of 2 branches missed.">        if (!esAdmin(authorization)) {</span>
+<span class="nc" id="L145">            return ResponseEntity.status(403).build();</span>
+        }
+
+<span class="fc" id="L148">        AuthUser authUser = authUserService.actualizar(id, authUserDto);</span>
+<span class="fc" id="L149">        return ResponseEntity.ok(toResponse(authUser));</span>
+    }
+
+    @PatchMapping(&quot;/trabajadores/{id}/estado&quot;)
+    public ResponseEntity&lt;?&gt; cambiarEstadoTrabajador(@RequestHeader(value = &quot;Authorization&quot;, required = false) String authorization,
+                                                     @PathVariable Integer id,
+                                                     @RequestParam boolean activo) {
+<span class="pc bpc" id="L156" title="1 of 2 branches missed.">        if (!esAdmin(authorization)) {</span>
+<span class="nc" id="L157">            return ResponseEntity.status(403).build();</span>
+        }
+
+<span class="fc" id="L160">        AuthUser authUser = authUserService.cambiarEstado(id, activo);</span>
+<span class="fc" id="L161">        return ResponseEntity.ok(toResponse(authUser));</span>
+    }
+
+    @DeleteMapping(&quot;/trabajadores/{id}&quot;)
+    public ResponseEntity&lt;?&gt; eliminarTrabajador(@RequestHeader(value = &quot;Authorization&quot;, required = false) String authorization,
+                                                @PathVariable Integer id) {
+<span class="pc bpc" id="L167" title="1 of 2 branches missed.">        if (!esAdmin(authorization)) {</span>
+<span class="nc" id="L168">            return ResponseEntity.status(403).build();</span>
+        }
+
+<span class="fc" id="L171">        authUserService.eliminar(id);</span>
+<span class="fc" id="L172">        return ResponseEntity.noContent().build();</span>
+    }
+
+    private boolean esAdmin(String authorization) {
+<span class="fc bfc" id="L176" title="All 2 branches covered.">        if (!esTokenValido(authorization)) {</span>
+<span class="fc" id="L177">            return false;</span>
+        }
+
+<span class="fc" id="L180">        String token = authorization.substring(7);</span>
+<span class="fc" id="L181">        String rol = jwtProvider.getRolFromToken(token);</span>
+<span class="fc bfc" id="L182" title="All 4 branches covered.">        return &quot;ADMIN&quot;.equals(rol) || &quot;OWNER&quot;.equals(rol);</span>
+    }
+
+    private boolean esTokenValido(String authorization) {
+<span class="pc bpc" id="L186" title="1 of 4 branches missed.">        if (authorization == null || !authorization.startsWith(&quot;Bearer &quot;)) {</span>
+<span class="fc" id="L187">            return false;</span>
+        }
+
+<span class="fc" id="L190">        String token = authorization.substring(7);</span>
+<span class="fc bfc" id="L191" title="All 2 branches covered.">        return authUserService.validate(token) != null;</span>
+    }
+
+    private AuthUserResponseDto toResponse(AuthUser authUser) {
+<span class="pc bpc" id="L195" title="2 of 4 branches missed.">        boolean usuarioLegacy = authUser.getRol() == null || authUser.getRol().trim().isEmpty();</span>
+<span class="pc bpc" id="L196" title="1 of 2 branches missed.">        String rol = usuarioLegacy ? &quot;ADMIN&quot; : authUser.getRol().trim().toUpperCase();</span>
+<span class="pc bpc" id="L197" title="1 of 2 branches missed.">        Boolean activo = authUser.getActivo() == null ? true : authUser.getActivo();</span>
+
+<span class="fc" id="L199">        return new AuthUserResponseDto(</span>
+<span class="fc" id="L200">                authUser.getId(),</span>
+<span class="fc" id="L201">                authUser.getUserName(),</span>
+<span class="fc" id="L202">                authUser.getNombre(),</span>
+<span class="fc" id="L203">                authUser.getApellido(),</span>
+<span class="fc" id="L204">                authUser.getDni(),</span>
+<span class="fc" id="L205">                authUser.getCelular(),</span>
+<span class="fc" id="L206">                authUser.getCorreo(),</span>
+                rol,
+                activo
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

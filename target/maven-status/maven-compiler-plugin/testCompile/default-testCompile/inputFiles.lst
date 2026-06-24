@@ -1,0 +1,11 @@
+/Users/guerrychermancastillocuevaso/Documents/M/backend-completo/ms-auth/src/test/java/com/example/ms_auth/integration/AuthUserIntegrationTest.java
+/Users/guerrychermancastillocuevaso/Documents/M/backend-completo/ms-auth/src/test/java/com/example/ms_auth/repository/AuthUserRepositoryTest.java
+/Users/guerrychermancastillocuevaso/Documents/M/backend-completo/ms-auth/src/test/java/com/example/ms_auth/security/JwtProviderTest.java
+/Users/guerrychermancastillocuevaso/Documents/M/backend-completo/ms-auth/src/test/java/com/example/ms_auth/support/TestDataFactory.java
+/Users/guerrychermancastillocuevaso/Documents/M/backend-completo/ms-auth/src/test/java/com/example/ms_auth/support/MySqlTestContainerSupport.java
+/Users/guerrychermancastillocuevaso/Documents/M/backend-completo/ms-auth/src/test/java/com/example/ms_auth/dto/DtoValidationTest.java
+/Users/guerrychermancastillocuevaso/Documents/M/backend-completo/ms-auth/src/test/java/com/example/ms_auth/security/SecurityConfigTest.java
+/Users/guerrychermancastillocuevaso/Documents/M/backend-completo/ms-auth/src/test/java/com/example/ms_auth/controller/AuthUserControllerTest.java
+/Users/guerrychermancastillocuevaso/Documents/M/backend-completo/ms-auth/src/test/java/com/example/ms_auth/service/impl/AuthUserServiceImplTest.java
+/Users/guerrychermancastillocuevaso/Documents/M/backend-completo/ms-auth/src/test/java/com/example/ms_auth/MsAuthApplicationTests.java
+/Users/guerrychermancastillocuevaso/Documents/M/backend-completo/ms-auth/src/test/java/com/example/ms_auth/AuthModelsTest.java

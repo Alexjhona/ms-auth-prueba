@@ -1,0 +1,11 @@
+com/example/ms_auth/repository/AuthUserRepositoryTest.class
+com/example/ms_auth/security/SecurityConfigTest.class
+com/example/ms_auth/AuthModelsTest.class
+com/example/ms_auth/integration/AuthUserIntegrationTest.class
+com/example/ms_auth/controller/AuthUserControllerTest.class
+com/example/ms_auth/support/MySqlTestContainerSupport.class
+com/example/ms_auth/dto/DtoValidationTest.class
+com/example/ms_auth/support/TestDataFactory.class
+com/example/ms_auth/service/impl/AuthUserServiceImplTest.class
+com/example/ms_auth/MsAuthApplicationTests.class
+com/example/ms_auth/security/JwtProviderTest.class

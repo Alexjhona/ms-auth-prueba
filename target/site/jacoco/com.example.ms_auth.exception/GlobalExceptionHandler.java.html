@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">auth-service</a> &gt; <a href="index.source.html" class="el_package">com.example.ms_auth.exception</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package com.example.ms_auth.exception;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingPathVariableException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.util.ContentCachingRequestWrapper;
+import org.springframework.web.util.WebUtils;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.validation.ConstraintViolationException;
+import java.nio.charset.Charset;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@RestControllerAdvice
+<span class="fc" id="L35">public class GlobalExceptionHandler {</span>
+
+<span class="fc" id="L37">    private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd'T'HH:mm:ss&quot;);</span>
+
+<span class="fc" id="L39">    private final ObjectMapper objectMapper = new ObjectMapper();</span>
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity&lt;Map&lt;String, Object&gt;&gt; handleValidationErrors(MethodArgumentNotValidException exception,
+                                                                      HttpServletRequest request) {
+<span class="fc" id="L44">        Map&lt;String, String&gt; errores = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L45" title="All 2 branches covered.">        for (FieldError fieldError : exception.getBindingResult().getFieldErrors()) {</span>
+<span class="fc" id="L46">            errores.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());</span>
+<span class="fc" id="L47">        }</span>
+
+<span class="fc" id="L49">        return ResponseEntity.badRequest().body(errorBadRequest(</span>
+                &quot;Se encontraron errores de validación&quot;,
+                request,
+<span class="fc" id="L52">                obtenerDatosRecibidos(request, exception.getBindingResult().getTarget()),</span>
+                errores
+        ));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity&lt;Map&lt;String, Object&gt;&gt; handleInvalidJson(HttpMessageNotReadableException exception,
+                                                                 HttpServletRequest request) {
+<span class="fc" id="L60">        Map&lt;String, String&gt; errores = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L61">        String campo = obtenerCampoConTipoInvalido(exception);</span>
+<span class="pc bpc" id="L62" title="2 of 4 branches missed.">        errores.put(campo == null ? &quot;json&quot; : campo, campo == null ? &quot;JSON inválido o mal formado&quot; : &quot;Tipo de dato inválido&quot;);</span>
+
+<span class="fc" id="L64">        return ResponseEntity.badRequest().body(errorBadRequest(</span>
+                &quot;Se encontraron errores de validación&quot;,
+                request,
+<span class="fc" id="L67">                obtenerDatosRecibidos(request, null),</span>
+                errores
+        ));
+    }
+
+    @ExceptionHandler({
+            MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class,
+            MissingPathVariableException.class,
+            ConstraintViolationException.class,
+            IllegalArgumentException.class
+    })
+    public ResponseEntity&lt;Map&lt;String, Object&gt;&gt; handleBadRequest(Exception exception, HttpServletRequest request) {
+<span class="fc" id="L80">        Map&lt;String, String&gt; errores = new LinkedHashMap&lt;&gt;();</span>
+
+<span class="fc bfc" id="L82" title="All 2 branches covered.">        if (exception instanceof MissingServletRequestParameterException) {</span>
+<span class="fc" id="L83">            errores.put(((MissingServletRequestParameterException) exception).getParameterName(), &quot;Parámetro obligatorio&quot;);</span>
+<span class="pc bpc" id="L84" title="1 of 2 branches missed.">        } else if (exception instanceof MethodArgumentTypeMismatchException) {</span>
+<span class="nc" id="L85">            errores.put(((MethodArgumentTypeMismatchException) exception).getName(), &quot;Tipo de dato inválido&quot;);</span>
+<span class="pc bpc" id="L86" title="1 of 2 branches missed.">        } else if (exception instanceof MissingPathVariableException) {</span>
+<span class="nc" id="L87">            errores.put(((MissingPathVariableException) exception).getVariableName(), &quot;Parámetro obligatorio&quot;);</span>
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">        } else if (exception instanceof ConstraintViolationException) {</span>
+<span class="nc" id="L89">            ((ConstraintViolationException) exception).getConstraintViolations().forEach(violation -&gt;</span>
+<span class="nc" id="L90">                    errores.putIfAbsent(obtenerUltimoSegmento(violation.getPropertyPath().toString()), violation.getMessage()));</span>
+        } else {
+<span class="pc bpc" id="L92" title="1 of 2 branches missed.">            errores.put(&quot;general&quot;, exception.getMessage() == null ? &quot;Solicitud inválida&quot; : exception.getMessage());</span>
+        }
+
+<span class="fc" id="L95">        return ResponseEntity.badRequest().body(errorBadRequest(</span>
+                &quot;Se encontraron errores de validación&quot;,
+                request,
+<span class="fc" id="L98">                obtenerDatosRecibidos(request, null),</span>
+                errores
+        ));
+    }
+
+    @ExceptionHandler(RecursoNoEncontradoException.class)
+    public ResponseEntity&lt;Map&lt;String, Object&gt;&gt; handleNotFound(RecursoNoEncontradoException exception,
+                                                              HttpServletRequest request) {
+<span class="fc" id="L106">        return ResponseEntity.status(HttpStatus.NOT_FOUND)</span>
+<span class="fc" id="L107">                .body(errorBasico(HttpStatus.NOT_FOUND, &quot;No se encontró el recurso solicitado&quot;, request));</span>
+    }
+
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity&lt;Map&lt;String, Object&gt;&gt; handleNoHandlerFound(NoHandlerFoundException exception,
+                                                                    HttpServletRequest request) {
+<span class="nc" id="L113">        return ResponseEntity.status(HttpStatus.NOT_FOUND)</span>
+<span class="nc" id="L114">                .body(errorBasico(HttpStatus.NOT_FOUND, &quot;No se encontró el recurso solicitado&quot;, request));</span>
+    }
+
+    @ExceptionHandler({ConflictoRecursoException.class, DataIntegrityViolationException.class})
+    public ResponseEntity&lt;Map&lt;String, Object&gt;&gt; handleConflict(Exception exception, HttpServletRequest request) {
+<span class="fc" id="L119">        return ResponseEntity.status(HttpStatus.CONFLICT)</span>
+<span class="fc" id="L120">                .body(errorBasico(HttpStatus.CONFLICT, &quot;El registro ya existe o genera conflicto&quot;, request));</span>
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity&lt;Map&lt;String, Object&gt;&gt; handleMethodNotAllowed(HttpRequestMethodNotSupportedException exception,
+                                                                      HttpServletRequest request) {
+<span class="nc" id="L126">        return ResponseEntity.status(HttpStatus.NOT_FOUND)</span>
+<span class="nc" id="L127">                .body(errorBasico(HttpStatus.NOT_FOUND, &quot;No se encontró el recurso solicitado&quot;, request));</span>
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity&lt;Map&lt;String, Object&gt;&gt; handleUnexpected(Exception exception, HttpServletRequest request) {
+<span class="fc" id="L132">        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)</span>
+<span class="fc" id="L133">                .body(errorBasico(HttpStatus.INTERNAL_SERVER_ERROR, &quot;Ocurrió un error inesperado en el servidor&quot;, request));</span>
+    }
+
+    private Map&lt;String, Object&gt; errorBadRequest(String mensaje,
+                                                HttpServletRequest request,
+                                                Object datosRecibidos,
+                                                Map&lt;String, String&gt; errores) {
+<span class="fc" id="L140">        Map&lt;String, Object&gt; response = errorBasico(HttpStatus.BAD_REQUEST, mensaje, request);</span>
+<span class="fc" id="L141">        response.put(&quot;datosRecibidos&quot;, datosRecibidos);</span>
+<span class="fc" id="L142">        response.put(&quot;errores&quot;, errores);</span>
+<span class="fc" id="L143">        return response;</span>
+    }
+
+    private Map&lt;String, Object&gt; errorBasico(HttpStatus status, String mensaje, HttpServletRequest request) {
+<span class="fc" id="L147">        Map&lt;String, Object&gt; response = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L148">        response.put(&quot;timestamp&quot;, LocalDateTime.now().format(TIMESTAMP_FORMAT));</span>
+<span class="fc" id="L149">        response.put(&quot;status&quot;, status.value());</span>
+<span class="fc" id="L150">        response.put(&quot;error&quot;, status.getReasonPhrase());</span>
+<span class="fc" id="L151">        response.put(&quot;mensaje&quot;, mensaje);</span>
+<span class="fc" id="L152">        response.put(&quot;ruta&quot;, request.getRequestURI());</span>
+<span class="fc" id="L153">        return response;</span>
+    }
+
+    private Object obtenerDatosRecibidos(HttpServletRequest request, Object target) {
+<span class="fc" id="L157">        String body = obtenerBody(request);</span>
+<span class="fc bfc" id="L158" title="All 2 branches covered.">        if (!body.isEmpty()) {</span>
+            try {
+<span class="fc" id="L160">                return objectMapper.readValue(body, new TypeReference&lt;LinkedHashMap&lt;String, Object&gt;&gt;() {</span>
+                });
+<span class="nc" id="L162">            } catch (Exception ignored) {</span>
+<span class="nc" id="L163">                Map&lt;String, Object&gt; datos = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L164">                datos.put(&quot;body&quot;, body);</span>
+<span class="nc" id="L165">                return datos;</span>
+            }
+        }
+
+<span class="fc" id="L169">        Map&lt;String, Object&gt; parametros = obtenerParametros(request);</span>
+<span class="fc bfc" id="L170" title="All 2 branches covered.">        if (!parametros.isEmpty()) {</span>
+<span class="fc" id="L171">            return parametros;</span>
+        }
+
+<span class="fc bfc" id="L174" title="All 2 branches covered.">        if (target != null) {</span>
+<span class="fc" id="L175">            return objectMapper.convertValue(target, new TypeReference&lt;LinkedHashMap&lt;String, Object&gt;&gt;() {</span>
+            });
+        }
+
+<span class="fc" id="L179">        return Collections.emptyMap();</span>
+    }
+
+    private String obtenerBody(HttpServletRequest request) {
+<span class="fc" id="L183">        ContentCachingRequestWrapper wrapper = WebUtils.getNativeRequest(request, ContentCachingRequestWrapper.class);</span>
+<span class="fc bfc" id="L184" title="All 4 branches covered.">        if (wrapper == null || wrapper.getContentAsByteArray().length == 0) {</span>
+<span class="fc" id="L185">            return &quot;&quot;;</span>
+        }
+
+<span class="pc bpc" id="L188" title="1 of 2 branches missed.">        Charset charset = Charset.forName(wrapper.getCharacterEncoding() == null ? &quot;UTF-8&quot; : wrapper.getCharacterEncoding());</span>
+<span class="fc" id="L189">        return new String(wrapper.getContentAsByteArray(), charset).trim();</span>
+    }
+
+    private Map&lt;String, Object&gt; obtenerParametros(HttpServletRequest request) {
+<span class="fc" id="L193">        Map&lt;String, Object&gt; parametros = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L194">        request.getParameterMap().forEach((nombre, valores) -&gt; parametros.put(nombre, convertirValores(valores)));</span>
+<span class="fc" id="L195">        return parametros;</span>
+    }
+
+    private Object convertirValores(String[] valores) {
+<span class="pc bpc" id="L199" title="2 of 4 branches missed.">        if (valores == null || valores.length == 0) {</span>
+<span class="nc" id="L200">            return &quot;&quot;;</span>
+        }
+<span class="pc bpc" id="L202" title="1 of 2 branches missed.">        if (valores.length == 1) {</span>
+<span class="fc" id="L203">            return valores[0];</span>
+        }
+<span class="nc" id="L205">        return Arrays.asList(valores);</span>
+    }
+
+    private String obtenerCampoConTipoInvalido(Throwable exception) {
+<span class="fc" id="L209">        Throwable actual = exception;</span>
+<span class="pc bpc" id="L210" title="1 of 2 branches missed.">        while (actual != null) {</span>
+<span class="fc bfc" id="L211" title="All 2 branches covered.">            if (actual instanceof JsonMappingException) {</span>
+<span class="fc" id="L212">                List&lt;JsonMappingException.Reference&gt; path = ((JsonMappingException) actual).getPath();</span>
+<span class="pc bpc" id="L213" title="1 of 2 branches missed.">                if (!path.isEmpty()) {</span>
+<span class="fc" id="L214">                    String campo = path.stream()</span>
+<span class="fc" id="L215">                            .map(JsonMappingException.Reference::getFieldName)</span>
+<span class="pc bpc" id="L216" title="2 of 4 branches missed.">                            .filter(nombre -&gt; nombre != null &amp;&amp; !nombre.isEmpty())</span>
+<span class="fc" id="L217">                            .collect(Collectors.joining(&quot;.&quot;));</span>
+<span class="pc bpc" id="L218" title="1 of 2 branches missed.">                    return campo.isEmpty() ? null : campo;</span>
+                }
+            }
+<span class="fc" id="L221">            actual = actual.getCause();</span>
+        }
+<span class="nc" id="L223">        return null;</span>
+    }
+
+    private String obtenerUltimoSegmento(String path) {
+<span class="nc bnc" id="L227" title="All 4 branches missed.">        if (path == null || path.trim().isEmpty()) {</span>
+<span class="nc" id="L228">            return &quot;general&quot;;</span>
+        }
+<span class="nc" id="L230">        int index = path.lastIndexOf('.');</span>
+<span class="nc bnc" id="L231" title="All 2 branches missed.">        return index &gt;= 0 ? path.substring(index + 1) : path;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

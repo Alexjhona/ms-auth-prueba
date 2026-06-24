@@ -1,0 +1,12 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+auth-service,com.example.ms_auth.exception,ConflictoRecursoException,4,4,0,0,2,2,1,1,1,1
+auth-service,com.example.ms_auth.exception,GlobalExceptionHandler,105,347,21,31,19,71,22,25,4,17
+auth-service,com.example.ms_auth.exception,RecursoNoEncontradoException,4,4,0,0,2,2,1,1,1,1
+auth-service,com.example.ms_auth.exception,GlobalExceptionHandler.new TypeReference() {...},0,6,0,0,0,1,0,1,0,1
+auth-service,com.example.ms_auth.exception,GlobalExceptionHandler.new TypeReference() {...},0,6,0,0,0,1,0,1,0,1
+auth-service,com.example.ms_auth.service.impl,AuthUserServiceImpl,96,490,35,59,16,100,33,31,2,15
+auth-service,com.example.ms_auth.security,SecurityConfig,0,127,0,0,0,24,0,3,0,3
+auth-service,com.example.ms_auth.security,PasswordEncoderConfig,0,7,0,0,0,2,0,2,0,2
+auth-service,com.example.ms_auth.security,JwtProvider,4,133,2,6,0,30,2,8,0,6
+auth-service,com.example.ms_auth.filter,RequestBodyCachingFilter,5,14,1,1,2,4,1,2,0,2
+auth-service,com.example.ms_auth.controller,AuthUserController,26,271,10,28,5,60,10,25,0,16

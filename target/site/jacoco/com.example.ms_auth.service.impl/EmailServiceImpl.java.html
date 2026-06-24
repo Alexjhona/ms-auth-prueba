@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EmailServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">auth-service</a> &gt; <a href="index.source.html" class="el_package">com.example.ms_auth.service.impl</a> &gt; <span class="el_source">EmailServiceImpl.java</span></div><h1>EmailServiceImpl.java</h1><pre class="source lang-java linenums">package com.example.ms_auth.service.impl;
+
+import com.example.ms_auth.dto.EnviarInvitacionRequest;
+import com.example.ms_auth.service.EmailService;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.MailSendException;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.stereotype.Service;
+
+@Service
+public class EmailServiceImpl implements EmailService {
+
+    private final JavaMailSender mailSender;
+
+    @Value(&quot;${spring.mail.username:guerrycastillo9@gmail.com}&quot;)
+    private String remitenteConfigurado;
+
+<span class="fc" id="L20">    public EmailServiceImpl(ObjectProvider&lt;JavaMailSender&gt; mailSenderProvider) {</span>
+<span class="fc" id="L21">        this.mailSender = mailSenderProvider.getIfAvailable();</span>
+<span class="fc" id="L22">    }</span>
+
+    @Override
+    public void enviarInvitacionTrabajador(EnviarInvitacionRequest request) {
+<span class="nc bnc" id="L26" title="All 2 branches missed.">        if (mailSender == null) {</span>
+<span class="nc" id="L27">            throw new MailSendException(&quot;No hay JavaMailSender configurado para enviar correos&quot;);</span>
+        }
+
+<span class="nc" id="L30">        SimpleMailMessage message = new SimpleMailMessage();</span>
+<span class="nc" id="L31">        message.setFrom(remitenteConfigurado);</span>
+<span class="nc" id="L32">        message.setReplyTo(request.getRemitente());</span>
+<span class="nc" id="L33">        message.setTo(request.getPara());</span>
+<span class="nc" id="L34">        message.setSubject(obtenerAsunto(request));</span>
+<span class="nc" id="L35">        message.setText(crearContenido(request));</span>
+<span class="nc" id="L36">        mailSender.send(message);</span>
+<span class="nc" id="L37">    }</span>
+
+    private String obtenerAsunto(EnviarInvitacionRequest request) {
+<span class="nc bnc" id="L40" title="All 4 branches missed.">        if (request.getAsunto() != null &amp;&amp; !request.getAsunto().trim().isEmpty()) {</span>
+<span class="nc" id="L41">            return request.getAsunto().trim();</span>
+        }
+<span class="nc" id="L43">        return &quot;Invitacion de registro - Chinito Importaciones&quot;;</span>
+    }
+
+    private String crearContenido(EnviarInvitacionRequest request) {
+<span class="nc" id="L47">        String asunto = obtenerAsunto(request).toLowerCase();</span>
+<span class="nc bnc" id="L48" title="All 2 branches missed.">        if (asunto.contains(&quot;restablecer&quot;)) {</span>
+<span class="nc" id="L49">            return &quot;Hola &quot; + request.getNombre().trim() + &quot;,\n\n&quot;</span>
+                    + &quot;Se solicito restablecer tu contrasena en Chinito Importaciones.\n\n&quot;
+                    + &quot;Para crear una nueva contrasena, abre este enlace local desde la computadora donde se ejecuta el sistema:\n&quot;
+<span class="nc" id="L52">                    + request.getEnlaceRegistro().trim() + &quot;\n\n&quot;</span>
+                    + &quot;Luego podras iniciar sesion con tu usuario o correo y tu nueva contrasena.\n\n&quot;
+<span class="nc" id="L54">                    + &quot;Remitente: &quot; + request.getRemitente().trim();</span>
+        }
+
+<span class="nc" id="L57">        return &quot;Hola &quot; + request.getNombre().trim() + &quot;,\n\n&quot;</span>
+                + &quot;Se creo tu acceso al sistema de Chinito Importaciones con el rol &quot;
+<span class="nc" id="L59">                + request.getRol().trim().toUpperCase() + &quot;.\n\n&quot;</span>
+                + &quot;Para registrar tu contrasena, abre este enlace local desde la computadora donde se ejecuta el sistema:\n&quot;
+<span class="nc" id="L61">                + request.getEnlaceRegistro().trim() + &quot;\n\n&quot;</span>
+                + &quot;Luego podras iniciar sesion con tu correo y la contrasena que registres.\n\n&quot;
+<span class="nc" id="L63">                + &quot;Remitente: &quot; + request.getRemitente().trim();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

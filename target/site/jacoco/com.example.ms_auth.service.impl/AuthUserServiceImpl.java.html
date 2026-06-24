@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthUserServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">auth-service</a> &gt; <a href="index.source.html" class="el_package">com.example.ms_auth.service.impl</a> &gt; <span class="el_source">AuthUserServiceImpl.java</span></div><h1>AuthUserServiceImpl.java</h1><pre class="source lang-java linenums">package com.example.ms_auth.service.impl;
+
+
+import com.example.ms_auth.dto.AuthUserDto;
+import com.example.ms_auth.entity.AuthUser;
+import com.example.ms_auth.entity.TokenDto;
+import com.example.ms_auth.exception.ConflictoRecursoException;
+import com.example.ms_auth.exception.RecursoNoEncontradoException;
+import com.example.ms_auth.repository.AuthUserRepository;
+import com.example.ms_auth.security.JwtProvider;
+import com.example.ms_auth.service.AuthUserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+
+
+
+import java.util.List;
+import java.util.Optional;
+
+
+
+
+@Service
+<span class="fc" id="L26">public class AuthUserServiceImpl implements AuthUserService {</span>
+    @Autowired
+    AuthUserRepository authUserRepository;
+    @Autowired
+    PasswordEncoder passwordEncoder;
+    @Autowired
+    JwtProvider jwtProvider;
+
+
+    @Override
+    public AuthUser save(AuthUserDto authUserDto) {
+<span class="fc" id="L37">        Optional&lt;AuthUser&gt; user = authUserRepository.findByUserName(authUserDto.getUserName());</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">        if (user.isPresent())</span>
+<span class="fc" id="L39">            throw new ConflictoRecursoException();</span>
+<span class="fc" id="L40">        validarUnicos(authUserDto, null);</span>
+<span class="fc" id="L41">        String password = passwordEncoder.encode(authUserDto.getPassword());</span>
+<span class="fc" id="L42">        AuthUser authUser = AuthUser.builder()</span>
+<span class="fc" id="L43">                .userName(authUserDto.getUserName())</span>
+<span class="fc" id="L44">                .password(password)</span>
+<span class="fc" id="L45">                .nombre(limpiar(authUserDto.getNombre()))</span>
+<span class="fc" id="L46">                .apellido(limpiar(authUserDto.getApellido()))</span>
+<span class="fc" id="L47">                .dni(limpiar(authUserDto.getDni()))</span>
+<span class="fc" id="L48">                .celular(limpiar(authUserDto.getCelular()))</span>
+<span class="fc" id="L49">                .correo(limpiar(authUserDto.getCorreo()))</span>
+<span class="fc" id="L50">                .rol(normalizarRol(authUserDto.getRol()))</span>
+<span class="fc bfc" id="L51" title="All 2 branches covered.">                .activo(authUserDto.getActivo() == null ? true : authUserDto.getActivo())</span>
+<span class="fc" id="L52">                .build();</span>
+
+
+
+
+<span class="fc" id="L57">        return authUserRepository.save(authUser);</span>
+    }
+
+
+
+
+    @Override
+    public TokenDto login(AuthUserDto authUserDto) {
+<span class="fc" id="L65">        String credencial = limpiar(authUserDto.getUserName());</span>
+<span class="pc bpc" id="L66" title="1 of 4 branches missed.">        if (credencial == null || credencial.isEmpty()) {</span>
+<span class="fc" id="L67">            credencial = limpiar(authUserDto.getCorreo());</span>
+        }
+<span class="pc bpc" id="L69" title="2 of 4 branches missed.">        if (credencial == null || credencial.isEmpty()) {</span>
+<span class="nc" id="L70">            return null;</span>
+        }
+
+<span class="fc" id="L73">        Optional&lt;AuthUser&gt; user = authUserRepository.findByUserName(credencial);</span>
+<span class="fc bfc" id="L74" title="All 2 branches covered.">        if (!user.isPresent()) {</span>
+<span class="fc" id="L75">            user = authUserRepository.findByCorreoIgnoreCase(credencial);</span>
+        }
+<span class="fc bfc" id="L77" title="All 2 branches covered.">        if (!user.isPresent())</span>
+<span class="fc" id="L78">            return null;</span>
+<span class="fc" id="L79">        AuthUser authUser = user.get();</span>
+<span class="pc bpc" id="L80" title="1 of 4 branches missed.">        if (Boolean.FALSE.equals(authUser.getActivo()) &amp;&amp; tieneRolConfigurado(authUser))</span>
+<span class="fc" id="L81">            return null;</span>
+<span class="fc bfc" id="L82" title="All 2 branches covered.">        if (passwordEncoder.matches(authUserDto.getPassword(), authUser.getPassword()))</span>
+<span class="fc" id="L83">            return new TokenDto(jwtProvider.createToken(authUser));</span>
+<span class="fc" id="L84">        return null;</span>
+    }
+
+
+
+
+    @Override
+    public TokenDto validate(String token) {
+<span class="fc bfc" id="L92" title="All 2 branches covered.">        if (!jwtProvider.validate(token))</span>
+<span class="fc" id="L93">            return null;</span>
+<span class="fc" id="L94">        String username = jwtProvider.getUserNameFromToken(token);</span>
+<span class="fc bfc" id="L95" title="All 2 branches covered.">        if (!authUserRepository.findByUserName(username).isPresent())</span>
+<span class="fc" id="L96">            return null;</span>
+<span class="fc" id="L97">        return new TokenDto(token);</span>
+    }
+
+    @Override
+    public TokenDto impersonarTrabajador(Integer id) {
+<span class="fc" id="L102">        AuthUser trabajador = authUserRepository.findById(id).orElse(null);</span>
+<span class="pc bpc" id="L103" title="2 of 4 branches missed.">        if (trabajador == null || Boolean.FALSE.equals(trabajador.getActivo())) {</span>
+<span class="nc" id="L104">            throw new RecursoNoEncontradoException();</span>
+        }
+
+<span class="fc" id="L107">        return new TokenDto(jwtProvider.createToken(trabajador));</span>
+    }
+
+    @Override
+    public List&lt;AuthUser&gt; listar() {
+<span class="fc" id="L112">        return authUserRepository.findAll();</span>
+    }
+
+    @Override
+    public AuthUser actualizar(Integer id, AuthUserDto authUserDto) {
+<span class="fc" id="L117">        AuthUser existente = authUserRepository.findById(id).orElse(null);</span>
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">        if (existente == null)</span>
+<span class="nc" id="L119">            throw new RecursoNoEncontradoException();</span>
+
+<span class="fc" id="L121">        Optional&lt;AuthUser&gt; usuarioConMismoNombre = authUserRepository.findByUserName(authUserDto.getUserName());</span>
+<span class="pc bpc" id="L122" title="3 of 4 branches missed.">        if (usuarioConMismoNombre.isPresent() &amp;&amp; !usuarioConMismoNombre.get().getId().equals(id))</span>
+<span class="nc" id="L123">            throw new ConflictoRecursoException();</span>
+
+<span class="fc" id="L125">        validarUnicos(authUserDto, id);</span>
+
+<span class="fc" id="L127">        existente.setUserName(authUserDto.getUserName());</span>
+<span class="pc bpc" id="L128" title="2 of 4 branches missed.">        if (authUserDto.getPassword() != null &amp;&amp; !authUserDto.getPassword().trim().isEmpty()) {</span>
+<span class="nc" id="L129">            existente.setPassword(passwordEncoder.encode(authUserDto.getPassword()));</span>
+        }
+<span class="fc" id="L131">        existente.setNombre(limpiar(authUserDto.getNombre()));</span>
+<span class="fc" id="L132">        existente.setApellido(limpiar(authUserDto.getApellido()));</span>
+<span class="fc" id="L133">        existente.setDni(limpiar(authUserDto.getDni()));</span>
+<span class="fc" id="L134">        existente.setCelular(limpiar(authUserDto.getCelular()));</span>
+<span class="fc" id="L135">        existente.setCorreo(limpiar(authUserDto.getCorreo()));</span>
+<span class="fc" id="L136">        existente.setRol(normalizarRol(authUserDto.getRol()));</span>
+<span class="pc bpc" id="L137" title="1 of 2 branches missed.">        existente.setActivo(authUserDto.getActivo() == null ? existente.getActivo() : authUserDto.getActivo());</span>
+
+<span class="fc" id="L139">        return authUserRepository.save(existente);</span>
+    }
+
+    @Override
+    public AuthUser cambiarEstado(Integer id, boolean activo) {
+<span class="nc" id="L144">        AuthUser existente = authUserRepository.findById(id).orElse(null);</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">        if (existente == null)</span>
+<span class="nc" id="L146">            throw new RecursoNoEncontradoException();</span>
+
+<span class="nc" id="L148">        existente.setActivo(activo);</span>
+<span class="nc" id="L149">        return authUserRepository.save(existente);</span>
+    }
+
+
+    @Override
+    public AuthUser activarTrabajador(String correo, String userName, String password) {
+<span class="fc" id="L155">        String correoLimpio = limpiar(correo);</span>
+<span class="fc" id="L156">        String usuarioLimpio = limpiar(userName);</span>
+<span class="fc" id="L157">        String passwordLimpio = limpiar(password);</span>
+<span class="pc bpc" id="L158" title="3 of 6 branches missed.">        if (correoLimpio == null || correoLimpio.isEmpty()</span>
+<span class="pc bpc" id="L159" title="2 of 4 branches missed.">                || usuarioLimpio == null || usuarioLimpio.isEmpty()</span>
+<span class="pc bpc" id="L160" title="1 of 2 branches missed.">                || passwordLimpio == null || passwordLimpio.isEmpty()) {</span>
+<span class="nc" id="L161">            throw new IllegalArgumentException(&quot;Solicitud inválida&quot;);</span>
+        }
+
+<span class="fc" id="L164">        AuthUser existente = authUserRepository.findByCorreoIgnoreCase(correoLimpio)</span>
+<span class="fc" id="L165">                .orElseGet(() -&gt; authUserRepository.findByUserName(correoLimpio).orElse(null));</span>
+<span class="fc bfc" id="L166" title="All 2 branches covered.">        if (existente == null) {</span>
+<span class="fc" id="L167">            throw new RecursoNoEncontradoException();</span>
+        }
+
+<span class="fc" id="L170">        Optional&lt;AuthUser&gt; usuarioConMismoNombre = authUserRepository.findByUserName(usuarioLimpio);</span>
+<span class="pc bpc" id="L171" title="3 of 4 branches missed.">        if (usuarioConMismoNombre.isPresent() &amp;&amp; !usuarioConMismoNombre.get().getId().equals(existente.getId())) {</span>
+<span class="nc" id="L172">            throw new ConflictoRecursoException();</span>
+        }
+
+<span class="fc" id="L175">        existente.setPassword(passwordEncoder.encode(passwordLimpio));</span>
+<span class="fc" id="L176">        existente.setUserName(usuarioLimpio);</span>
+<span class="fc" id="L177">        existente.setCorreo(correoLimpio);</span>
+<span class="fc" id="L178">        existente.setActivo(true);</span>
+<span class="fc" id="L179">        return authUserRepository.save(existente);</span>
+    }
+
+    @Override
+    public void eliminar(Integer id) {
+<span class="pc bpc" id="L184" title="1 of 2 branches missed.">        if (!authUserRepository.existsById(id)) {</span>
+<span class="fc" id="L185">            throw new RecursoNoEncontradoException();</span>
+        }
+<span class="nc" id="L187">        authUserRepository.deleteById(id);</span>
+<span class="nc" id="L188">    }</span>
+
+    private void validarUnicos(AuthUserDto dto, Integer idActual) {
+<span class="fc" id="L191">        String dni = limpiar(dto.getDni());</span>
+<span class="pc bpc" id="L192" title="1 of 4 branches missed.">        if (dni != null &amp;&amp; !dni.isEmpty()) {</span>
+<span class="fc" id="L193">            Optional&lt;AuthUser&gt; existente = authUserRepository.findAll().stream()</span>
+<span class="fc" id="L194">                    .filter(u -&gt; dni.equals(u.getDni()))</span>
+<span class="fc" id="L195">                    .findFirst();</span>
+<span class="pc bpc" id="L196" title="1 of 4 branches missed.">            if (existente.isPresent() &amp;&amp; !existente.get().getId().equals(idActual)) {</span>
+<span class="fc" id="L197">                throw new ConflictoRecursoException();</span>
+            }
+        }
+
+<span class="fc" id="L201">        String correo = limpiar(dto.getCorreo());</span>
+<span class="pc bpc" id="L202" title="1 of 4 branches missed.">        if (correo != null &amp;&amp; !correo.isEmpty()) {</span>
+<span class="fc" id="L203">            Optional&lt;AuthUser&gt; existente = authUserRepository.findAll().stream()</span>
+<span class="pc" id="L204">                    .filter(u -&gt; correo.equalsIgnoreCase(u.getCorreo()))</span>
+<span class="fc" id="L205">                    .findFirst();</span>
+<span class="pc bpc" id="L206" title="3 of 4 branches missed.">            if (existente.isPresent() &amp;&amp; !existente.get().getId().equals(idActual)) {</span>
+<span class="nc" id="L207">                throw new ConflictoRecursoException();</span>
+            }
+        }
+<span class="fc" id="L210">    }</span>
+
+    private String limpiar(String valor) {
+<span class="fc bfc" id="L213" title="All 2 branches covered.">        return valor == null ? null : valor.trim();</span>
+    }
+
+    private String normalizarRol(String rol) {
+<span class="pc bpc" id="L217" title="1 of 4 branches missed.">        String rolNormalizado = rol == null || rol.trim().isEmpty()</span>
+<span class="fc" id="L218">                ? &quot;VENDEDOR&quot;</span>
+<span class="fc" id="L219">                : rol.trim().toUpperCase().replaceAll(&quot;[\\s-]+&quot;, &quot;_&quot;);</span>
+
+<span class="pc bpc" id="L221" title="1 of 2 branches missed.">        if (&quot;SUBADMIN&quot;.equals(rolNormalizado)) {</span>
+<span class="nc" id="L222">            rolNormalizado = &quot;SUB_ADMIN&quot;;</span>
+        }
+
+<span class="fc bfc" id="L225" title="All 2 branches covered.">        switch (rolNormalizado) {</span>
+            case &quot;ADMIN&quot;:
+            case &quot;SUB_ADMIN&quot;:
+            case &quot;VENDEDOR&quot;:
+            case &quot;ALMACENERO&quot;:
+            case &quot;COMPRAS&quot;:
+            case &quot;CAJERO&quot;:
+<span class="fc" id="L232">                return rolNormalizado;</span>
+            default:
+<span class="fc" id="L234">                throw new IllegalArgumentException(&quot;Rol no permitido&quot;);</span>
+        }
+    }
+
+    private boolean tieneRolConfigurado(AuthUser authUser) {
+<span class="pc bpc" id="L239" title="2 of 4 branches missed.">        return authUser.getRol() != null &amp;&amp; !authUser.getRol().trim().isEmpty();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

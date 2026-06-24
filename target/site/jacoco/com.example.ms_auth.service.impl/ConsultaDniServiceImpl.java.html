@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ConsultaDniServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">auth-service</a> &gt; <a href="index.source.html" class="el_package">com.example.ms_auth.service.impl</a> &gt; <span class="el_source">ConsultaDniServiceImpl.java</span></div><h1>ConsultaDniServiceImpl.java</h1><pre class="source lang-java linenums">package com.example.ms_auth.service.impl;
+
+import com.example.ms_auth.dto.DniConsultaResponseDto;
+import com.example.ms_auth.service.ConsultaDniService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.HashMap;
+import java.util.Map;
+
+@Service
+public class ConsultaDniServiceImpl implements ConsultaDniService {
+
+<span class="fc" id="L25">    private final RestTemplate restTemplate = new RestTemplate();</span>
+    private final ObjectMapper objectMapper;
+
+    @Value(&quot;${factiliza.api.base-url:https://api.factiliza.com/v1}&quot;)
+    private String factilizaBaseUrl;
+
+    @Value(&quot;${factiliza.api.token:}&quot;)
+    private String factilizaToken;
+
+    @Value(&quot;${factiliza.api.enabled:false}&quot;)
+    private boolean factilizaEnabled;
+
+    @Value(&quot;${apiperu.api.base-url:https://apiperu.dev/api}&quot;)
+    private String apiPeruBaseUrl;
+
+    @Value(&quot;${apiperu.api.token:}&quot;)
+    private String apiPeruToken;
+
+<span class="fc" id="L43">    public ConsultaDniServiceImpl(ObjectMapper objectMapper) {</span>
+<span class="fc" id="L44">        this.objectMapper = objectMapper;</span>
+<span class="fc" id="L45">    }</span>
+
+    @Override
+    public DniConsultaResponseDto consultar(String dni) {
+<span class="nc bnc" id="L49" title="All 2 branches missed.">        String dniLimpio = dni == null ? &quot;&quot; : dni.replaceAll(&quot;\\D&quot;, &quot;&quot;);</span>
+<span class="nc bnc" id="L50" title="All 2 branches missed.">        if (dniLimpio.length() != 8) {</span>
+<span class="nc" id="L51">            throw new IllegalArgumentException(&quot;El DNI debe tener 8 digitos&quot;);</span>
+        }
+
+<span class="nc" id="L54">        String tokenFactiliza = obtenerToken(factilizaToken, &quot;FACTILIZA_TOKEN&quot;);</span>
+<span class="nc" id="L55">        String tokenApiPeru = obtenerToken(apiPeruToken, &quot;APIPERU_TOKEN&quot;);</span>
+<span class="nc bnc" id="L56" title="All 4 branches missed.">        boolean tieneFactiliza = factilizaEnabled &amp;&amp; tieneTexto(tokenFactiliza);</span>
+<span class="nc" id="L57">        boolean tieneApiPeru = tieneTexto(tokenApiPeru);</span>
+
+<span class="nc bnc" id="L59" title="All 4 branches missed.">        if (!tieneFactiliza &amp;&amp; !tieneApiPeru) {</span>
+<span class="nc" id="L60">            throw new IllegalStateException(&quot;Configura APIPERU_TOKEN para consultar DNI gratis&quot;);</span>
+        }
+
+<span class="nc" id="L63">        Exception ultimoError = null;</span>
+
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        if (tieneApiPeru) {</span>
+            try {
+<span class="nc" id="L67">                return consultarApiPeru(dniLimpio, tokenApiPeru);</span>
+<span class="nc" id="L68">            } catch (Exception ex) {</span>
+<span class="nc" id="L69">                ultimoError = ex;</span>
+            }
+        }
+
+<span class="nc bnc" id="L73" title="All 2 branches missed.">        if (tieneFactiliza) {</span>
+            try {
+<span class="nc" id="L75">                return consultarFactiliza(dniLimpio, tokenFactiliza);</span>
+<span class="nc" id="L76">            } catch (Exception ex) {</span>
+<span class="nc" id="L77">                ultimoError = ex;</span>
+            }
+        }
+
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        if (ultimoError instanceof IllegalArgumentException) {</span>
+<span class="nc" id="L82">            throw (IllegalArgumentException) ultimoError;</span>
+        }
+
+<span class="nc" id="L85">        throw new IllegalArgumentException(&quot;No se pudo consultar el DNI en las APIs gratuitas configuradas&quot;);</span>
+    }
+
+    private DniConsultaResponseDto consultarFactiliza(String dniLimpio, String token) {
+        try {
+<span class="nc" id="L90">            HttpHeaders headers = new HttpHeaders();</span>
+<span class="nc" id="L91">            headers.setBearerAuth(token.trim());</span>
+<span class="nc" id="L92">            HttpEntity&lt;Void&gt; request = new HttpEntity&lt;&gt;(headers);</span>
+<span class="nc" id="L93">            String url = limpiarBaseUrl(factilizaBaseUrl, &quot;https://api.factiliza.com/v1&quot;) + &quot;/dni/info/&quot; + dniLimpio;</span>
+<span class="nc" id="L94">            ResponseEntity&lt;String&gt; response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);</span>
+
+<span class="nc" id="L96">            JsonNode root = objectMapper.readTree(response.getBody());</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">            if (!root.path(&quot;success&quot;).asBoolean(false)) {</span>
+<span class="nc" id="L98">                throw new IllegalArgumentException(root.path(&quot;message&quot;).asText(&quot;No se encontro el DNI&quot;));</span>
+            }
+
+<span class="nc" id="L101">            JsonNode data = root.path(&quot;data&quot;);</span>
+<span class="nc" id="L102">            return new DniConsultaResponseDto(</span>
+<span class="nc" id="L103">                    data.path(&quot;numero&quot;).asText(dniLimpio),</span>
+<span class="nc" id="L104">                    data.path(&quot;nombres&quot;).asText(&quot;&quot;),</span>
+<span class="nc" id="L105">                    data.path(&quot;apellido_paterno&quot;).asText(&quot;&quot;),</span>
+<span class="nc" id="L106">                    data.path(&quot;apellido_materno&quot;).asText(&quot;&quot;),</span>
+<span class="nc" id="L107">                    data.path(&quot;nombre_completo&quot;).asText(&quot;&quot;),</span>
+<span class="nc" id="L108">                    primerTexto(data, &quot;direccion_completa&quot;, &quot;direccion&quot;),</span>
+<span class="nc" id="L109">                    data.path(&quot;distrito&quot;).asText(&quot;&quot;),</span>
+<span class="nc" id="L110">                    data.path(&quot;provincia&quot;).asText(&quot;&quot;),</span>
+<span class="nc" id="L111">                    data.path(&quot;departamento&quot;).asText(&quot;&quot;),</span>
+<span class="nc" id="L112">                    primerTexto(data, &quot;ciudad&quot;, &quot;distrito&quot;, &quot;provincia&quot;, &quot;departamento&quot;),</span>
+<span class="nc" id="L113">                    normalizarFecha(primerTexto(data, &quot;fecha_nacimiento&quot;, &quot;fechaNacimiento&quot;, &quot;nacimiento&quot;, &quot;fec_nacimiento&quot;)),</span>
+<span class="nc" id="L114">                    normalizarSexo(primerTexto(data, &quot;sexo&quot;, &quot;genero&quot;))</span>
+            );
+<span class="nc" id="L116">        } catch (IllegalArgumentException | IllegalStateException ex) {</span>
+<span class="nc" id="L117">            throw ex;</span>
+<span class="nc" id="L118">        } catch (Exception ex) {</span>
+<span class="nc" id="L119">            throw new IllegalArgumentException(&quot;No se pudo consultar el DNI en Factiliza&quot;);</span>
+        }
+    }
+
+    private DniConsultaResponseDto consultarApiPeru(String dniLimpio, String token) {
+        try {
+<span class="nc" id="L125">            HttpHeaders headers = new HttpHeaders();</span>
+<span class="nc" id="L126">            headers.setBearerAuth(token.trim());</span>
+<span class="nc" id="L127">            headers.setContentType(MediaType.APPLICATION_JSON);</span>
+<span class="nc" id="L128">            headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));</span>
+
+<span class="nc" id="L130">            Map&lt;String, String&gt; body = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L131">            body.put(&quot;dni&quot;, dniLimpio);</span>
+
+<span class="nc" id="L133">            HttpEntity&lt;Map&lt;String, String&gt;&gt; request = new HttpEntity&lt;&gt;(body, headers);</span>
+<span class="nc" id="L134">            String url = limpiarBaseUrl(apiPeruBaseUrl, &quot;https://apiperu.dev/api&quot;) + &quot;/dni&quot;;</span>
+<span class="nc" id="L135">            ResponseEntity&lt;String&gt; response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);</span>
+
+<span class="nc" id="L137">            JsonNode root = objectMapper.readTree(response.getBody());</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">            if (!root.path(&quot;success&quot;).asBoolean(false)) {</span>
+<span class="nc" id="L139">                throw new IllegalArgumentException(root.path(&quot;message&quot;).asText(&quot;No se encontro el DNI&quot;));</span>
+            }
+
+<span class="nc" id="L142">            JsonNode data = root.path(&quot;data&quot;);</span>
+<span class="nc" id="L143">            return new DniConsultaResponseDto(</span>
+<span class="nc" id="L144">                    data.path(&quot;numero&quot;).asText(dniLimpio),</span>
+<span class="nc" id="L145">                    data.path(&quot;nombres&quot;).asText(&quot;&quot;),</span>
+<span class="nc" id="L146">                    data.path(&quot;apellido_paterno&quot;).asText(&quot;&quot;),</span>
+<span class="nc" id="L147">                    data.path(&quot;apellido_materno&quot;).asText(&quot;&quot;),</span>
+<span class="nc" id="L148">                    data.path(&quot;nombre_completo&quot;).asText(&quot;&quot;),</span>
+                    &quot;&quot;,
+                    &quot;&quot;,
+                    &quot;&quot;,
+                    &quot;&quot;,
+<span class="nc" id="L153">                    primerTexto(data, &quot;ciudad&quot;, &quot;distrito&quot;, &quot;provincia&quot;, &quot;departamento&quot;),</span>
+<span class="nc" id="L154">                    normalizarFecha(primerTexto(data, &quot;fecha_nacimiento&quot;, &quot;fechaNacimiento&quot;, &quot;nacimiento&quot;, &quot;fec_nacimiento&quot;)),</span>
+<span class="nc" id="L155">                    normalizarSexo(primerTexto(data, &quot;sexo&quot;, &quot;genero&quot;))</span>
+            );
+<span class="nc" id="L157">        } catch (IllegalArgumentException ex) {</span>
+<span class="nc" id="L158">            throw ex;</span>
+<span class="nc" id="L159">        } catch (Exception ex) {</span>
+<span class="nc" id="L160">            throw new IllegalArgumentException(&quot;No se pudo consultar el DNI en ApiPeruDev&quot;);</span>
+        }
+    }
+
+    private boolean tieneTexto(String valor) {
+<span class="nc bnc" id="L165" title="All 4 branches missed.">        return valor != null &amp;&amp; !valor.trim().isEmpty();</span>
+    }
+
+    private String obtenerToken(String tokenConfigurado, String variableEntorno) {
+<span class="nc bnc" id="L169" title="All 2 branches missed.">        if (tieneTexto(tokenConfigurado)) {</span>
+<span class="nc" id="L170">            return tokenConfigurado.trim();</span>
+        }
+<span class="nc" id="L172">        String tokenEntorno = System.getenv(variableEntorno);</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">        return tokenEntorno == null ? &quot;&quot; : tokenEntorno.trim();</span>
+    }
+
+    private String limpiarBaseUrl(String valor, String porDefecto) {
+<span class="nc bnc" id="L177" title="All 2 branches missed.">        return valor == null ? porDefecto : valor.replaceAll(&quot;/+$&quot;, &quot;&quot;);</span>
+    }
+
+    private String primerTexto(JsonNode data, String... campos) {
+<span class="nc bnc" id="L181" title="All 2 branches missed.">        for (String campo : campos) {</span>
+<span class="nc" id="L182">            String valor = data.path(campo).asText(&quot;&quot;);</span>
+<span class="nc bnc" id="L183" title="All 6 branches missed.">            if (valor != null &amp;&amp; !valor.trim().isEmpty() &amp;&amp; !&quot;null&quot;.equalsIgnoreCase(valor.trim())) {</span>
+<span class="nc" id="L184">                return valor.trim();</span>
+            }
+        }
+<span class="nc" id="L187">        return &quot;&quot;;</span>
+    }
+
+    private String normalizarFecha(String valor) {
+<span class="nc bnc" id="L191" title="All 2 branches missed.">        if (!tieneTexto(valor)) {</span>
+<span class="nc" id="L192">            return &quot;&quot;;</span>
+        }
+
+<span class="nc" id="L195">        String texto = valor.trim();</span>
+<span class="nc" id="L196">        DateTimeFormatter[] formatos = new DateTimeFormatter[] {</span>
+                DateTimeFormatter.ISO_LOCAL_DATE,
+<span class="nc" id="L198">                DateTimeFormatter.ofPattern(&quot;dd/MM/yyyy&quot;),</span>
+<span class="nc" id="L199">                DateTimeFormatter.ofPattern(&quot;dd-MM-yyyy&quot;),</span>
+<span class="nc" id="L200">                DateTimeFormatter.ofPattern(&quot;yyyy/MM/dd&quot;)</span>
+        };
+
+<span class="nc bnc" id="L203" title="All 2 branches missed.">        for (DateTimeFormatter formato : formatos) {</span>
+            try {
+<span class="nc" id="L205">                return LocalDate.parse(texto, formato).format(DateTimeFormatter.ISO_LOCAL_DATE);</span>
+<span class="nc" id="L206">            } catch (DateTimeParseException ex) {</span>
+                // Probamos el siguiente formato conocido.
+            }
+        }
+
+<span class="nc" id="L211">        return texto;</span>
+    }
+
+    private String normalizarSexo(String valor) {
+<span class="nc bnc" id="L215" title="All 2 branches missed.">        if (!tieneTexto(valor)) {</span>
+<span class="nc" id="L216">            return &quot;&quot;;</span>
+        }
+
+<span class="nc" id="L219">        String texto = valor.trim().toUpperCase();</span>
+<span class="nc bnc" id="L220" title="All 4 branches missed.">        if (&quot;M&quot;.equals(texto) || texto.startsWith(&quot;MASC&quot;)) {</span>
+<span class="nc" id="L221">            return &quot;MASCULINO&quot;;</span>
+        }
+<span class="nc bnc" id="L223" title="All 4 branches missed.">        if (&quot;F&quot;.equals(texto) || texto.startsWith(&quot;FEM&quot;)) {</span>
+<span class="nc" id="L224">            return &quot;FEMENINO&quot;;</span>
+        }
+
+<span class="nc" id="L227">        return texto;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
