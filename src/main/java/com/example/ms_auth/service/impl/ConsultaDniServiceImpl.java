@@ -22,6 +22,10 @@ import java.util.Map;
 @Service
 public class ConsultaDniServiceImpl implements ConsultaDniService {
 
+    private static final String CAMPO_DISTRITO = "distrito";
+    private static final String CAMPO_PROVINCIA = "provincia";
+    private static final String CAMPO_DEPARTAMENTO = "departamento";
+
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper;
 
@@ -106,10 +110,10 @@ public class ConsultaDniServiceImpl implements ConsultaDniService {
                     data.path("apellido_materno").asText(""),
                     data.path("nombre_completo").asText(""),
                     primerTexto(data, "direccion_completa", "direccion"),
-                    data.path("distrito").asText(""),
-                    data.path("provincia").asText(""),
-                    data.path("departamento").asText(""),
-                    primerTexto(data, "ciudad", "distrito", "provincia", "departamento"),
+                    data.path(CAMPO_DISTRITO).asText(""),
+                    data.path(CAMPO_PROVINCIA).asText(""),
+                    data.path(CAMPO_DEPARTAMENTO).asText(""),
+                    primerTexto(data, "ciudad", CAMPO_DISTRITO, CAMPO_PROVINCIA, CAMPO_DEPARTAMENTO),
                     normalizarFecha(primerTexto(data, "fecha_nacimiento", "fechaNacimiento", "nacimiento", "fec_nacimiento")),
                     normalizarSexo(primerTexto(data, "sexo", "genero"))
             );
@@ -150,7 +154,7 @@ public class ConsultaDniServiceImpl implements ConsultaDniService {
                     "",
                     "",
                     "",
-                    primerTexto(data, "ciudad", "distrito", "provincia", "departamento"),
+                    primerTexto(data, "ciudad", CAMPO_DISTRITO, CAMPO_PROVINCIA, CAMPO_DEPARTAMENTO),
                     normalizarFecha(primerTexto(data, "fecha_nacimiento", "fechaNacimiento", "nacimiento", "fec_nacimiento")),
                     normalizarSexo(primerTexto(data, "sexo", "genero"))
             );

@@ -1,7 +1,11 @@
 package com.example.ms_auth.exception;
 
 import com.fasterxml.jackson.databind.JsonMappingException;
+import javax.validation.ConstraintViolation;
+import javax.validation.ConstraintViolationException;
+import javax.validation.Path;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -10,6 +14,7 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -18,6 +23,7 @@ import org.springframework.web.util.ContentCachingRequestWrapper;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -122,6 +128,76 @@ class GlobalExceptionHandlerTest {
                 .isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(handler.handleUnexpected(new RuntimeException(), request).getStatusCode())
                 .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
+    void badRequest_HandlesMissingPathAndConstraintViolation() {
+        MissingPathVariableException missingPath =
+                new MissingPathVariableException("id", mock(MethodParameter.class));
+
+        ConstraintViolation<?> violation = mock(ConstraintViolation.class);
+        Path path = mock(Path.class);
+        when(path.toString()).thenReturn("activarTrabajador.password");
+        when(violation.getPropertyPath()).thenReturn(path);
+        when(violation.getMessage()).thenReturn("Campo obligatorio");
+        ConstraintViolationException constraint =
+                new ConstraintViolationException(Set.of(violation));
+
+        assertThat(errors(handler.handleBadRequest(missingPath, request("/auth/trabajadores/{id}"))))
+                .containsEntry("id", "Parámetro obligatorio");
+        assertThat(errors(handler.handleBadRequest(constraint, request("/auth/trabajadores/activar"))))
+                .containsEntry("password", "Campo obligatorio");
+    }
+
+    @Test
+    void validationErrors_ParsesValidCachedJsonBody() throws Exception {
+        Map<String, Object> target = Map.of("userName", "fallback");
+        BeanPropertyBindingResult binding = new BeanPropertyBindingResult(target, "authUserDto");
+        binding.addError(new FieldError("authUserDto", "userName", "Inválido"));
+
+        ResponseEntity<Map<String, Object>> response = handler.handleValidationErrors(
+                new MethodArgumentNotValidException(null, binding),
+                cachedRequest("/auth/create", "{\"userName\":\"body\"}")
+        );
+
+        assertThat(data(response)).containsEntry("userName", "body");
+    }
+
+    @Test
+    void badRequest_HandlesSingleAndEmptyParameterValues() {
+        MockHttpServletRequest single = request("/auth/test");
+        single.addParameter("rol", "ADMIN");
+        MockHttpServletRequest empty = request("/auth/test");
+        empty.setParameter("rol", new String[0]);
+
+        assertThat(data(handler.handleBadRequest(new IllegalArgumentException(), single)))
+                .containsEntry("rol", "ADMIN");
+        assertThat(data(handler.handleBadRequest(new IllegalArgumentException(), empty)))
+                .containsEntry("rol", "");
+    }
+
+    @Test
+    void invalidJson_IgnoresEmptyMappingReferences() {
+        JsonMappingException mapping = mock(JsonMappingException.class);
+        when(mapping.getPath()).thenReturn(List.of(
+                new JsonMappingException.Reference(new Object(), ""),
+                new JsonMappingException.Reference(new Object(), -1)
+        ));
+        HttpMessageNotReadableException exception = mock(HttpMessageNotReadableException.class);
+        when(exception.getCause()).thenReturn(mapping);
+
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleInvalidJson(exception, request("/auth/create"));
+
+        assertThat(errors(response)).containsEntry("json", "JSON inválido o mal formado");
+    }
+
+    @Test
+    void exceptionConstructors_PreserveMessages() {
+        assertThat(new ConflictoRecursoException("duplicado"))
+                .hasMessage("duplicado");
+        assertThat(new RecursoNoEncontradoException("ausente"))
+                .hasMessage("ausente");
     }
 
     private MockHttpServletRequest request(String uri) {

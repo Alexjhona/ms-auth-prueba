@@ -54,8 +54,9 @@ class EmailServiceImplTest {
     @Test
     void failsClearlyWhenMailSenderIsUnavailable() {
         EmailServiceImpl service = service(null);
+        EnviarInvitacionRequest request = TestDataFactory.invitacionRequest();
 
-        assertThatThrownBy(() -> service.enviarInvitacionTrabajador(TestDataFactory.invitacionRequest()))
+        assertThatThrownBy(() -> service.enviarInvitacionTrabajador(request))
                 .isInstanceOf(MailSendException.class)
                 .hasMessageContaining("JavaMailSender");
     }

@@ -227,12 +227,7 @@ public class AuthUserServiceImpl implements AuthUserService {
         }
 
         switch (rolNormalizado) {
-            case "ADMIN":
-            case "SUB_ADMIN":
-            case "VENDEDOR":
-            case "ALMACENERO":
-            case "COMPRAS":
-            case "CAJERO":
+            case "ADMIN", "SUB_ADMIN", "VENDEDOR", "ALMACENERO", "COMPRAS", "CAJERO":
                 return rolNormalizado;
             default:
                 throw new IllegalArgumentException("Rol no permitido");

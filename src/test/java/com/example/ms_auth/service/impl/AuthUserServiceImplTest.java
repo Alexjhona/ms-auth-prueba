@@ -383,4 +383,145 @@ class AuthUserServiceImplTest {
 
         assertThat(result.getToken()).isEqualTo("impersonated");
     }
+
+    @Test
+    void login_WhenCredentialsAreBlank_ReturnsNull() {
+        AuthUserDto dto = AuthUserDto.builder().userName(" ").correo(" ").password("x").build();
+
+        assertThat(authUserService.login(dto)).isNull();
+        verifyNoInteractions(authUserRepository, passwordEncoder, jwtProvider);
+    }
+
+    @Test
+    void login_WhenInactiveLegacyUserHasNoRole_AllowsLogin() {
+        AuthUserDto dto = new AuthUserDto("legacy", "123456");
+        AuthUser user = TestDataFactory.user("legacy", "encoded");
+        user.setActivo(false);
+        user.setRol(" ");
+        when(authUserRepository.findByUserName("legacy")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("123456", "encoded")).thenReturn(true);
+        when(jwtProvider.createToken(user)).thenReturn("legacy-token");
+
+        TokenDto result = authUserService.login(dto);
+
+        assertThat(result).extracting(TokenDto::getToken).isEqualTo("legacy-token");
+    }
+
+    @Test
+    void impersonarTrabajador_WhenMissingOrInactive_ThrowsNotFound() {
+        AuthUser inactive = TestDataFactory.user("inactive", "encoded");
+        inactive.setActivo(false);
+        when(authUserRepository.findById(1)).thenReturn(Optional.empty());
+        when(authUserRepository.findById(2)).thenReturn(Optional.of(inactive));
+
+        assertThatThrownBy(() -> authUserService.impersonarTrabajador(1))
+                .isInstanceOf(RecursoNoEncontradoException.class);
+        assertThatThrownBy(() -> authUserService.impersonarTrabajador(2))
+                .isInstanceOf(RecursoNoEncontradoException.class);
+    }
+
+    @Test
+    void listar_ReturnsRepositoryContent() {
+        AuthUser user = TestDataFactory.user("ana", "encoded");
+        when(authUserRepository.findAll()).thenReturn(java.util.List.of(user));
+
+        assertThat(authUserService.listar()).containsExactly(user);
+    }
+
+    @Test
+    void actualizar_WhenUserIsMissingOrNameBelongsToAnotherUser_Throws() {
+        AuthUserDto dto = TestDataFactory.validUserDto("nuevo", "123456");
+        AuthUser other = TestDataFactory.user("nuevo", "encoded");
+        other.setId(9);
+        AuthUser current = TestDataFactory.user("actual", "old");
+        current.setId(7);
+        when(authUserRepository.findById(1)).thenReturn(Optional.empty());
+        when(authUserRepository.findById(7)).thenReturn(Optional.of(current));
+        when(authUserRepository.findByUserName("nuevo")).thenReturn(Optional.of(other));
+
+        assertThatThrownBy(() -> authUserService.actualizar(1, dto))
+                .isInstanceOf(RecursoNoEncontradoException.class);
+        assertThatThrownBy(() -> authUserService.actualizar(7, dto))
+                .isInstanceOf(ConflictoRecursoException.class);
+    }
+
+    @Test
+    void actualizar_WhenDataIsValid_UpdatesPasswordRoleAndState() {
+        AuthUser current = TestDataFactory.user("actual", "old");
+        current.setId(7);
+        AuthUserDto dto = TestDataFactory.validUserDto("nuevo", "new-password");
+        dto.setRol("COMPRAS");
+        dto.setActivo(false);
+        when(authUserRepository.findById(7)).thenReturn(Optional.of(current));
+        when(authUserRepository.findByUserName("nuevo")).thenReturn(Optional.empty());
+        when(authUserRepository.findAll()).thenReturn(java.util.List.of());
+        when(passwordEncoder.encode("new-password")).thenReturn("new-encoded");
+        when(authUserRepository.save(current)).thenReturn(current);
+
+        AuthUser result = authUserService.actualizar(7, dto);
+
+        assertThat(result)
+                .returns("nuevo", AuthUser::getUserName)
+                .returns("new-encoded", AuthUser::getPassword)
+                .returns("COMPRAS", AuthUser::getRol)
+                .returns(false, AuthUser::getActivo);
+    }
+
+    @Test
+    void cambiarEstado_CoversMissingAndExistingUser() {
+        AuthUser current = TestDataFactory.user("ana", "encoded");
+        when(authUserRepository.findById(1)).thenReturn(Optional.empty());
+        when(authUserRepository.findById(2)).thenReturn(Optional.of(current));
+        when(authUserRepository.save(current)).thenReturn(current);
+
+        assertThatThrownBy(() -> authUserService.cambiarEstado(1, false))
+                .isInstanceOf(RecursoNoEncontradoException.class);
+        assertThat(authUserService.cambiarEstado(2, false).getActivo()).isFalse();
+    }
+
+    @Test
+    void activarTrabajador_RejectsEachRequiredBlankValue() {
+        assertThatThrownBy(() -> authUserService.activarTrabajador(null, "ana", "123456"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> authUserService.activarTrabajador("ana@test.com", " ", "123456"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> authUserService.activarTrabajador("ana@test.com", "ana", " "))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void activarTrabajador_WhenNameBelongsToAnotherUser_ThrowsConflict() {
+        AuthUser existing = TestDataFactory.user("temporal", "old");
+        existing.setId(5);
+        AuthUser other = TestDataFactory.user("ana", "encoded");
+        other.setId(8);
+        when(authUserRepository.findByCorreoIgnoreCase("ana@test.com")).thenReturn(Optional.of(existing));
+        when(authUserRepository.findByUserName("ana")).thenReturn(Optional.of(other));
+
+        assertThatThrownBy(() -> authUserService.activarTrabajador("ana@test.com", "ana", "123456"))
+                .isInstanceOf(ConflictoRecursoException.class);
+    }
+
+    @Test
+    void eliminar_WhenUserExists_DeletesIt() {
+        when(authUserRepository.existsById(4)).thenReturn(true);
+
+        authUserService.eliminar(4);
+
+        verify(authUserRepository).deleteById(4);
+    }
+
+    @Test
+    void save_WhenEmailAlreadyExists_ThrowsConflict() {
+        AuthUserDto dto = TestDataFactory.validUserDto("nuevo", "123456");
+        dto.setDni(null);
+        AuthUser existing = TestDataFactory.user("otro", "encoded");
+        existing.setId(10);
+        existing.setCorreo("NUEVO@TEST.COM");
+        when(authUserRepository.findByUserName("nuevo")).thenReturn(Optional.empty());
+        when(authUserRepository.findAll()).thenReturn(java.util.List.of(existing));
+
+        assertThatThrownBy(() -> authUserService.save(dto))
+                .isInstanceOf(ConflictoRecursoException.class);
+    }
 }

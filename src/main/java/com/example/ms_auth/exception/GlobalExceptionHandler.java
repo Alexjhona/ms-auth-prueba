@@ -189,7 +189,7 @@ public class GlobalExceptionHandler {
             return "";
         }
 
-        Charset charset = Charset.forName(wrapper.getCharacterEncoding() == null ? "UTF-8" : wrapper.getCharacterEncoding());
+        Charset charset = Charset.forName(wrapper.getCharacterEncoding());
         return new String(wrapper.getContentAsByteArray(), charset).trim();
     }
 

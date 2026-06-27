@@ -538,4 +538,47 @@ class AuthUserControllerTest {
                 .andExpect(jsonPath("$.status").value(500))
                 .andExpect(jsonPath("$.mensaje").value("Ocurrió un error inesperado en el servidor"));
     }
+
+    @Test
+    void protectedMutationEndpoints_WithoutAuthorization_ReturnForbidden() throws Exception {
+        AuthUserDto worker = TestDataFactory.validUserDto("worker", "123456");
+
+        mockMvc.perform(post("/auth/trabajadores/enviar-invitacion")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(TestDataFactory.invitacionRequest())))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/auth/trabajadores/1/impersonar"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/auth/trabajadores/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(worker)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(patch("/auth/trabajadores/1/estado").param("activo", "false"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(delete("/auth/trabajadores/1").header("Authorization", "Basic abc"))
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(emailService);
+        verify(authUserService, never()).impersonarTrabajador(anyInt());
+        verify(authUserService, never()).actualizar(anyInt(), any(AuthUserDto.class));
+        verify(authUserService, never()).cambiarEstado(anyInt(), anyBoolean());
+        verify(authUserService, never()).eliminar(anyInt());
+    }
+
+    @Test
+    void listarTrabajadores_LegacyNullRoleAndState_UsesCompatibleDefaults() throws Exception {
+        AuthUser legacy = TestDataFactory.user("legacy", "encoded");
+        legacy.setId(12);
+        legacy.setRol(null);
+        legacy.setActivo(null);
+        when(authUserService.validate("admin-token")).thenReturn(new TokenDto("admin-token"));
+        when(jwtProvider.getRolFromToken("admin-token")).thenReturn("ADMIN");
+        when(authUserService.listar()).thenReturn(java.util.List.of(legacy));
+
+        mockMvc.perform(get("/auth/trabajadores")
+                        .header("Authorization", "Bearer admin-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].rol").value("ADMIN"))
+                .andExpect(jsonPath("$[0].activo").value(true));
+    }
 }
