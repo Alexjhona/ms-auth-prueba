@@ -78,8 +78,8 @@ public class ConsultaDniServiceImpl implements ConsultaDniService {
             }
         }
 
-        if (ultimoError instanceof IllegalArgumentException) {
-            throw (IllegalArgumentException) ultimoError;
+        if (ultimoError instanceof IllegalArgumentException illegalArgumentException) {
+            throw illegalArgumentException;
         }
 
         throw new IllegalArgumentException("No se pudo consultar el DNI en las APIs gratuitas configuradas");
@@ -180,7 +180,7 @@ public class ConsultaDniServiceImpl implements ConsultaDniService {
     private String primerTexto(JsonNode data, String... campos) {
         for (String campo : campos) {
             String valor = data.path(campo).asText("");
-            if (valor != null && !valor.trim().isEmpty() && !"null".equalsIgnoreCase(valor.trim())) {
+            if (!valor.trim().isEmpty() && !"null".equalsIgnoreCase(valor.trim())) {
                 return valor.trim();
             }
         }

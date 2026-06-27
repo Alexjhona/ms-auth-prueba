@@ -85,8 +85,8 @@ class JwtProviderTest {
 
     @Test
     @DisplayName("Token expirado no valida")
-    void validate_WhenTokenIsExpired_ReturnsFalse() throws InterruptedException {
-        JwtProvider jwtProvider = jwtProvider(1L);
+    void validate_WhenTokenIsExpired_ReturnsFalse() {
+        JwtProvider jwtProvider = jwtProvider(-1L);
         AuthUser authUser = AuthUser.builder()
                 .id(1)
                 .userName("admin")
@@ -94,7 +94,6 @@ class JwtProviderTest {
                 .build();
 
         String token = jwtProvider.createToken(authUser);
-        Thread.sleep(5L);
 
         assertThat(jwtProvider.validate(token)).isFalse();
     }

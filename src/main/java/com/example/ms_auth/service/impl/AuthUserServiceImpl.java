@@ -9,7 +9,6 @@ import com.example.ms_auth.exception.RecursoNoEncontradoException;
 import com.example.ms_auth.repository.AuthUserRepository;
 import com.example.ms_auth.security.JwtProvider;
 import com.example.ms_auth.service.AuthUserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,12 +23,17 @@ import java.util.Optional;
 
 @Service
 public class AuthUserServiceImpl implements AuthUserService {
-    @Autowired
-    AuthUserRepository authUserRepository;
-    @Autowired
-    PasswordEncoder passwordEncoder;
-    @Autowired
-    JwtProvider jwtProvider;
+    private final AuthUserRepository authUserRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtProvider jwtProvider;
+
+    public AuthUserServiceImpl(AuthUserRepository authUserRepository,
+                               PasswordEncoder passwordEncoder,
+                               JwtProvider jwtProvider) {
+        this.authUserRepository = authUserRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtProvider = jwtProvider;
+    }
 
 
     @Override
@@ -48,7 +52,7 @@ public class AuthUserServiceImpl implements AuthUserService {
                 .celular(limpiar(authUserDto.getCelular()))
                 .correo(limpiar(authUserDto.getCorreo()))
                 .rol(normalizarRol(authUserDto.getRol()))
-                .activo(authUserDto.getActivo() == null ? true : authUserDto.getActivo())
+                .activo(authUserDto.getActivo() == null || authUserDto.getActivo())
                 .build();
 
 
@@ -71,10 +75,10 @@ public class AuthUserServiceImpl implements AuthUserService {
         }
 
         Optional<AuthUser> user = authUserRepository.findByUserName(credencial);
-        if (!user.isPresent()) {
+        if (user.isEmpty()) {
             user = authUserRepository.findByCorreoIgnoreCase(credencial);
         }
-        if (!user.isPresent())
+        if (user.isEmpty())
             return null;
         AuthUser authUser = user.get();
         if (Boolean.FALSE.equals(authUser.getActivo()) && tieneRolConfigurado(authUser))
@@ -92,7 +96,7 @@ public class AuthUserServiceImpl implements AuthUserService {
         if (!jwtProvider.validate(token))
             return null;
         String username = jwtProvider.getUserNameFromToken(token);
-        if (!authUserRepository.findByUserName(username).isPresent())
+        if (authUserRepository.findByUserName(username).isEmpty())
             return null;
         return new TokenDto(token);
     }

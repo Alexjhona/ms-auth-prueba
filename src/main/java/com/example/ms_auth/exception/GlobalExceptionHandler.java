@@ -35,6 +35,10 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+    private static final String DATOS_RECIBIDOS = "datosRecibidos";
+    private static final String ERRORES = "errores";
+    private static final String MENSAJE_VALIDACION = "Se encontraron errores de validación";
+    private static final String MENSAJE_NO_ENCONTRADO = "No se encontró el recurso solicitado";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -47,7 +51,7 @@ public class GlobalExceptionHandler {
         }
 
         return ResponseEntity.badRequest().body(errorBadRequest(
-                "Se encontraron errores de validación",
+                MENSAJE_VALIDACION,
                 request,
                 obtenerDatosRecibidos(request, exception.getBindingResult().getTarget()),
                 errores
@@ -62,7 +66,7 @@ public class GlobalExceptionHandler {
         errores.put(campo == null ? "json" : campo, campo == null ? "JSON inválido o mal formado" : "Tipo de dato inválido");
 
         return ResponseEntity.badRequest().body(errorBadRequest(
-                "Se encontraron errores de validación",
+                MENSAJE_VALIDACION,
                 request,
                 obtenerDatosRecibidos(request, null),
                 errores
@@ -79,21 +83,21 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleBadRequest(Exception exception, HttpServletRequest request) {
         Map<String, String> errores = new LinkedHashMap<>();
 
-        if (exception instanceof MissingServletRequestParameterException) {
-            errores.put(((MissingServletRequestParameterException) exception).getParameterName(), "Parámetro obligatorio");
-        } else if (exception instanceof MethodArgumentTypeMismatchException) {
-            errores.put(((MethodArgumentTypeMismatchException) exception).getName(), "Tipo de dato inválido");
-        } else if (exception instanceof MissingPathVariableException) {
-            errores.put(((MissingPathVariableException) exception).getVariableName(), "Parámetro obligatorio");
-        } else if (exception instanceof ConstraintViolationException) {
-            ((ConstraintViolationException) exception).getConstraintViolations().forEach(violation ->
+        if (exception instanceof MissingServletRequestParameterException missing) {
+            errores.put(missing.getParameterName(), "Parámetro obligatorio");
+        } else if (exception instanceof MethodArgumentTypeMismatchException mismatch) {
+            errores.put(mismatch.getName(), "Tipo de dato inválido");
+        } else if (exception instanceof MissingPathVariableException missingPath) {
+            errores.put(missingPath.getVariableName(), "Parámetro obligatorio");
+        } else if (exception instanceof ConstraintViolationException constraintViolation) {
+            constraintViolation.getConstraintViolations().forEach(violation ->
                     errores.putIfAbsent(obtenerUltimoSegmento(violation.getPropertyPath().toString()), violation.getMessage()));
         } else {
             errores.put("general", exception.getMessage() == null ? "Solicitud inválida" : exception.getMessage());
         }
 
         return ResponseEntity.badRequest().body(errorBadRequest(
-                "Se encontraron errores de validación",
+                MENSAJE_VALIDACION,
                 request,
                 obtenerDatosRecibidos(request, null),
                 errores
@@ -104,14 +108,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleNotFound(RecursoNoEncontradoException exception,
                                                               HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(errorBasico(HttpStatus.NOT_FOUND, "No se encontró el recurso solicitado", request));
+                .body(errorBasico(HttpStatus.NOT_FOUND, MENSAJE_NO_ENCONTRADO, request));
     }
 
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNoHandlerFound(NoHandlerFoundException exception,
                                                                     HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(errorBasico(HttpStatus.NOT_FOUND, "No se encontró el recurso solicitado", request));
+                .body(errorBasico(HttpStatus.NOT_FOUND, MENSAJE_NO_ENCONTRADO, request));
     }
 
     @ExceptionHandler({ConflictoRecursoException.class, DataIntegrityViolationException.class})
@@ -124,7 +128,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleMethodNotAllowed(HttpRequestMethodNotSupportedException exception,
                                                                       HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(errorBasico(HttpStatus.NOT_FOUND, "No se encontró el recurso solicitado", request));
+                .body(errorBasico(HttpStatus.NOT_FOUND, MENSAJE_NO_ENCONTRADO, request));
     }
 
     @ExceptionHandler(Exception.class)
@@ -138,8 +142,8 @@ public class GlobalExceptionHandler {
                                                 Object datosRecibidos,
                                                 Map<String, String> errores) {
         Map<String, Object> response = errorBasico(HttpStatus.BAD_REQUEST, mensaje, request);
-        response.put("datosRecibidos", datosRecibidos);
-        response.put("errores", errores);
+        response.put(DATOS_RECIBIDOS, datosRecibidos);
+        response.put(ERRORES, errores);
         return response;
     }
 
@@ -208,8 +212,8 @@ public class GlobalExceptionHandler {
     private String obtenerCampoConTipoInvalido(Throwable exception) {
         Throwable actual = exception;
         while (actual != null) {
-            if (actual instanceof JsonMappingException) {
-                List<JsonMappingException.Reference> path = ((JsonMappingException) actual).getPath();
+            if (actual instanceof JsonMappingException mappingException) {
+                List<JsonMappingException.Reference> path = mappingException.getPath();
                 if (!path.isEmpty()) {
                     String campo = path.stream()
                             .map(JsonMappingException.Reference::getFieldName)

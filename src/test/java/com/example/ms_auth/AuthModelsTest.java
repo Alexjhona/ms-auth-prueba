@@ -35,7 +35,7 @@ class AuthModelsTest {
         assertThat(builder.getPassword()).isEqualTo("builderPass");
         assertThat(builder.toString()).contains("builderUser");
         assertThat(builder).isEqualTo(new AuthUserDto("builderUser", "builderPass"));
-        assertThat(builder.hashCode()).isEqualTo(new AuthUserDto("builderUser", "builderPass").hashCode());
+        assertThat(builder).hasSameHashCodeAs(new AuthUserDto("builderUser", "builderPass"));
         assertThat(AuthUserDto.builder().userName("x").password("y").toString()).contains("AuthUserDto");
     }
 
@@ -55,7 +55,7 @@ class AuthModelsTest {
         assertThat(completo.getUserName()).isEqualTo("user");
         assertThat(completo.toString()).contains("user");
         assertThat(completo).isEqualTo(new AuthUserResponseDto(2, "user"));
-        assertThat(completo.hashCode()).isEqualTo(new AuthUserResponseDto(2, "user").hashCode());
+        assertThat(completo).hasSameHashCodeAs(new AuthUserResponseDto(2, "user"));
     }
 
     @Test
@@ -90,7 +90,7 @@ class AuthModelsTest {
         assertThat(construido.getPassword()).isEqualTo("builderPass");
         assertThat(construido.toString()).contains("builderUser");
         assertThat(construido).isEqualTo(new AuthUser(3, "builderUser", "builderPass"));
-        assertThat(construido.hashCode()).isEqualTo(new AuthUser(3, "builderUser", "builderPass").hashCode());
+        assertThat(construido).hasSameHashCodeAs(new AuthUser(3, "builderUser", "builderPass"));
     }
 
     @Test
@@ -106,6 +106,6 @@ class AuthModelsTest {
         assertThat(completo.getToken()).isEqualTo("token-dos");
         assertThat(completo.toString()).contains("token-dos");
         assertThat(completo).isEqualTo(new TokenDto("token-dos"));
-        assertThat(completo.hashCode()).isEqualTo(new TokenDto("token-dos").hashCode());
+        assertThat(completo).hasSameHashCodeAs(new TokenDto("token-dos"));
     }
 }

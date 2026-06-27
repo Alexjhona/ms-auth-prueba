@@ -173,16 +173,6 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>0.8.12</version>
-				<configuration>
-					<excludes>
-						<exclude>com/example/ms_auth/MsAuthApplication.class</exclude>
-						<exclude>com/example/ms_auth/config/*</exclude>
-						<exclude>com/example/ms_auth/dto/*</exclude>
-						<exclude>com/example/ms_auth/entity/*</exclude>
-						<exclude>com/example/ms_auth/service/impl/ConsultaDniServiceImpl.class</exclude>
-						<exclude>com/example/ms_auth/service/impl/EmailServiceImpl.class</exclude>
-					</excludes>
-				</configuration>
 				<executions>
 					<execution>
 						<goals>
