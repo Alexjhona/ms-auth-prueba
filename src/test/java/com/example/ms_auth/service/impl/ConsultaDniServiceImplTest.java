@@ -106,4 +106,20 @@ class ConsultaDniServiceImplTest {
                 .hasMessage("DNI inexistente");
         server.verify();
     }
+
+    @Test
+    void limpiarBaseUrl_PreservesDefaultAndRemovesOnlyTrailingSlashes() {
+        assertThat(limpiarBaseUrl(null, "https://default.test///"))
+                .isEqualTo("https://default.test///");
+        assertThat(limpiarBaseUrl("https://api.test/path", "unused"))
+                .isEqualTo("https://api.test/path");
+        assertThat(limpiarBaseUrl("https://api.test/path///", "unused"))
+                .isEqualTo("https://api.test/path");
+        assertThat(limpiarBaseUrl("", "unused")).isEmpty();
+        assertThat(limpiarBaseUrl("////", "unused")).isEmpty();
+    }
+
+    private String limpiarBaseUrl(String valor, String porDefecto) {
+        return ReflectionTestUtils.invokeMethod(service, "limpiarBaseUrl", valor, porDefecto);
+    }
 }

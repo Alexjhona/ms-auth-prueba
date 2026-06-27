@@ -178,7 +178,14 @@ public class ConsultaDniServiceImpl implements ConsultaDniService {
     }
 
     private String limpiarBaseUrl(String valor, String porDefecto) {
-        return valor == null ? porDefecto : valor.replaceAll("/+$", "");
+        if (valor == null) {
+            return porDefecto;
+        }
+        int longitud = valor.length();
+        while (longitud > 0 && valor.charAt(longitud - 1) == '/') {
+            longitud--;
+        }
+        return valor.substring(0, longitud);
     }
 
     private String primerTexto(JsonNode data, String... campos) {
